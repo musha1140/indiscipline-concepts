@@ -1,0 +1,21 @@
+[Unit]
+Description=Switchboard state relay (loopback, exposed to the tailnet by tailscale serve)
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/switchboard/relay.env
+ExecStart=/usr/bin/python3 /opt/switchboard/switchboard_relay.py
+User=switchboard
+Group=switchboard
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/switchboard
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
