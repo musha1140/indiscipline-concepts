@@ -6,7 +6,8 @@ browsers on the tailnet. Sealed channels arrive already encrypted, so the
 relay only ever holds their ciphertext.
 
 Endpoints
-  GET  /state    returns the document with an ETag; honours If-None-Match (304)
+  GET  /state    returns the document with an ETag; honours If-None-Match (304);
+                 204 when nothing has been stored yet
   PUT  /state    replaces the document; honours If-Match (412 on conflict)
   GET  /health   liveness check, no auth
 
@@ -127,7 +128,7 @@ class Handler(BaseHTTPRequestHandler):
         with LOCK:
             raw, tag = read_doc()
         if raw is None:
-            return self.reply(404, b'{"error":"empty"}')
+            return self.reply(204)
         if self.headers.get("If-None-Match") == tag:
             return self.reply(304, etag=tag)
         return self.reply(200, raw, etag=tag)

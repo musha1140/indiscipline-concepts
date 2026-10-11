@@ -209,6 +209,8 @@ button.tag:hover{color:var(--text)}
 .seat .who{min-width:0}
 .seat .who b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .seat .who small{color:var(--faint);font-size:12px}
+.seat-tools{display:flex;gap:12px;margin-top:2px}
+.seat-tools .link-btn{font-size:12px}
 .seat select{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:5px 6px;font-size:13px}
 .seat label{display:flex;gap:5px;align-items:center;font-size:12px;color:var(--muted);white-space:nowrap}
 .seat-add{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
@@ -323,6 +325,8 @@ const PREF = "switchboard.prefs";
 // Each member record is one membership: one person, one organization, one role.
 // The same real person in two organizations is two separate records and is never merged.
 const ROLES = [["client","Client"],["coworker","Coworker"],["team","Team"],["contractor","Contractor"]];
+// Discord handles are stored without a leading @ and shown with one.
+const normHandle = (s) => String(s || "").trim().replace(/^@+/, "").slice(0, 64);
 const roleLabel = (r) => { const f = ROLES.find((x) => x[0] === r); return f ? f[1] : ""; };
 const COLORS = ["#f34b42","#7fb0d8","#6fbf73","#e0a84a","#b58ad8","#4fb6a8","#d87f9c","#9aa84f"];
 
@@ -615,6 +619,10 @@ function engBadge(orgId) {
 
 function renderPersona() {
   const sel = $("persona");
+  const pinned = P.pinned && S.users[P.pinned] ? P.pinned : null;
+  if (pinned) S.me = pinned;
+  sel.disabled = !!pinned;
+  sel.title = pinned ? "This browser joined through an invite as " + user(pinned).name : "Acting as";
   sel.innerHTML = Object.entries(S.users).map(([id, u]) => `<option value="${id}" ${id === S.me ? "selected" : ""}>${esc(u.name)} · ${esc((org(u.org) || {}).name || "")}${u.role ? " · " + esc(roleLabel(u.role)) : ""}</option>`).join("");
   $("meAvatar").style.background = colorFor(S.me);
   $("meAvatar").textContent = initials(user(S.me).name);
@@ -1164,7 +1172,7 @@ function renderFloor(orgId) {
         const u = user(s.uid);
         return `<div class="seat">
           ${avatarHTML(s.uid)}
-          <div class="who"><b>${esc(u.name)}</b><small>${esc(roleLabel(u.role) || "member")} at ${esc((org(u.org) || {}).name || "")}</small></div>
+          <div class="who"><b>${esc(u.name)}</b><small>${esc(roleLabel(u.role) || "member")} at ${esc((org(u.org) || {}).name || "")}${u.handle ? " · @" + esc(u.handle) : ""}</small><div class="seat-tools"><button class="link-btn" data-seat-edit="${s.uid}">Edit</button><button class="link-btn" data-seat-invite="${s.uid}">Invite link</button></div></div>
           <select data-seat-role="${bench}|${s.uid}" aria-label="Floor role for ${esc(u.name)}">${FLOOR_ROLES.map((r) => `<option value="${r[0]}" ${r[0] === s.role ? "selected" : ""}>${r[1]}</option>`).join("")}</select>
           <label><input type="checkbox" data-seat-sign="${bench}|${s.uid}" ${s.sign ? "checked" : ""} ${s.role === "observer" ? "disabled" : ""}> signs</label>
           <button class="chip-btn rm" data-seat-rm="${bench}|${s.uid}">Unseat</button>
@@ -1229,6 +1237,23 @@ function renderFloor(orgId) {
     f.seats = f.seats.filter((s) => !(s.bench === bench && s.uid === id));
     floorEdited(f); save(); render();
   }));
+  root.querySelectorAll("[data-seat-edit]").forEach((el) => el.addEventListener("click", async () => {
+    const id = el.dataset.seatEdit, u = S.users[id];
+    if (!u) return;
+    const r = await ask("Edit · " + u.name, [
+      { id: "name", label: "Name", value: u.name },
+      { id: "role", label: "Role at " + ((org(u.org) || {}).name || ""), type: "select", options: ROLES.map((x) => ({ value: x[0], label: x[1] })), value: u.role || "client" },
+      { id: "handle", label: "Discord tag", value: u.handle || "", placeholder: "username" }
+    ], "Save");
+    if (!r || !r.name.trim()) return;
+    const changedName = r.name.trim() !== u.name;
+    u.name = r.name.trim(); u.role = r.role;
+    if (normHandle(r.handle)) u.handle = normHandle(r.handle); else delete u.handle;
+    // A name is part of what both leads accepted, so renaming a seated person starts a new version.
+    if (changedName) floorEdited(f);
+    save(); render();
+  }));
+  root.querySelectorAll("[data-seat-invite]").forEach((el) => el.addEventListener("click", () => inviteLink(el.dataset.seatInvite)));
   root.querySelectorAll("[data-seat-add]").forEach((el) => el.addEventListener("click", () => {
     const bench = el.dataset.seatAdd;
     const pick = root.querySelector(`[data-seat-pick="${bench}"]`);
@@ -1242,11 +1267,13 @@ function renderFloor(orgId) {
     const r = await ask("New person · " + benchName(orgId, bench), [
       { id: "name", label: "Name" },
       { id: "role", label: "Role at " + benchName(orgId, bench), type: "select", options: ROLES.map((x) => ({ value: x[0], label: x[1] })), value: bench === "host" ? "team" : "client" },
-      { id: "floor", label: "Floor role", type: "select", options: FLOOR_ROLES.map((x) => ({ value: x[0], label: x[1] })), value: "member" }
+      { id: "floor", label: "Floor role", type: "select", options: FLOOR_ROLES.map((x) => ({ value: x[0], label: x[1] })), value: "member" },
+      { id: "handle", label: "Discord tag (optional)", placeholder: "username" }
     ], "Seat");
     if (!r || !r.name.trim()) return;
     const id = uid("u");
     S.users[id] = { name: r.name.trim(), org: bOrg, role: r.role };
+    if (normHandle(r.handle)) S.users[id].handle = normHandle(r.handle);
     f.seats.push({ uid: id, bench, role: r.floor, sign: false });
     floorEdited(f); save(); render();
   }));
@@ -1335,11 +1362,13 @@ async function addMember() {
   const r = await ask("Add member", [
     { id: "name", label: "Name" },
     { id: "org", label: "Organization", type: "select", options: S.orgs.map((o) => ({ value: o.id, label: o.name })), value: user(S.me).org },
-    { id: "role", label: "Role in that organization", type: "select", options: ROLES.map((x) => ({ value: x[0], label: x[1] })), value: "client" }
+    { id: "role", label: "Role in that organization", type: "select", options: ROLES.map((x) => ({ value: x[0], label: x[1] })), value: "client" },
+    { id: "handle", label: "Discord tag (optional)", placeholder: "username" }
   ], "Add");
   if (!r || !r.name.trim()) return;
   const id = uid("u");
   S.users[id] = { name: r.name.trim(), org: r.org, role: r.role };
+  if (normHandle(r.handle)) S.users[id].handle = normHandle(r.handle);
   save(); render(); toast(`${r.name.trim()} added to ${org(r.org).name} as ${roleLabel(r.role).toLowerCase()}`);
 }
 
@@ -1420,7 +1449,7 @@ async function pull(merge) {
   try {
     const res = await fetch(P.relay.replace(/\/$/, "") + "/state", { headers: relayHeaders(remoteTag ? { "If-None-Match": remoteTag } : {}) });
     if (res.status === 304) { setSync("ok"); return; }
-    if (res.status === 404) { await push(); return; }
+    if (res.status === 204 || res.status === 404) { await push(); return; }
     if (!res.ok) throw new Error("HTTP " + res.status);
     const remote = await res.json();
     remoteTag = res.headers.get("ETag") || "";
@@ -1466,6 +1495,57 @@ async function configureRelay() {
   if (P.relay) { setSync("warn", "Connecting…"); await pull(true); }
   else setSync();
 }
+
+/* ---------- invites and direct links ---------- */
+function baseUrl() { return location.origin + location.pathname; }
+async function inviteLink(id) {
+  const u = S.users[id];
+  if (!u) return;
+  const q = new URLSearchParams({ join: id });
+  if (P.relay) q.set("relay", P.relay);
+  const link = baseUrl() + "#" + q.toString();
+  let copied = false;
+  try { await navigator.clipboard.writeText(link); copied = true; } catch (e) { /* show it instead */ }
+  await ask("Invite · " + u.name + (u.handle ? " (@" + u.handle + ")" : ""), [
+    { id: "link", label: copied ? "Copied. Send this to them, then send the relay token in a separate message." : "Send this to them, then send the relay token in a separate message.", value: link }
+  ], "Done");
+  if (!P.relay) toast("No relay set yet: this link only works once the shared relay is configured here");
+}
+async function handleJoin(q) {
+  const id = q.get("join");
+  const relay = (q.get("relay") || "").replace(/\/$/, "");
+  if (relay && P.relay !== relay) {
+    const r = await ask("Join the floor", [
+      { id: "url", label: "Relay", value: relay },
+      { id: "token", label: "Relay token (sent to you separately)", type: "password" }
+    ], "Join");
+    if (!r || !r.token.trim()) { toast("Join cancelled"); return; }
+    P.relay = r.url.trim().replace(/\/$/, "");
+    P.relayToken = r.token.trim();
+    remoteTag = ""; P.remoteTag = "";
+    savePrefs();
+    setSync("warn", "Connecting…");
+    await pull(false);
+  }
+  if (!S.users[id]) { toast("That seat isn't on this floor. Check the relay and token with whoever sent the invite."); return; }
+  S.me = id;
+  P.pinned = id;
+  savePrefs();
+  save({ noPush: true });
+  history.replaceState(null, "", baseUrl());
+  const o = user(id).org;
+  go(isHost(id) ? "inbox" : (openSeat(o, id) ? "inbox" : "floor:" + o));
+  toast("This browser is now " + user(id).name);
+}
+function routeFromHash() {
+  const h = decodeURIComponent(location.hash.slice(1));
+  if (!h) return false;
+  if (h === "unpin") { P.pinned = null; savePrefs(); history.replaceState(null, "", baseUrl()); render(); toast("Persona unpinned"); return true; }
+  if (h.includes("join=")) { handleJoin(new URLSearchParams(h)); return true; }
+  if (/^(inbox|intake|verify|ch:|floor:|eng:)/.test(h)) { go(h); return true; }
+  return false;
+}
+window.addEventListener("hashchange", routeFromHash);
 
 /* ---------- wiring ---------- */
 function bindComposer(area, onSend) {
@@ -1539,7 +1619,7 @@ setInterval(() => { if (P.relay && document.visibilityState === "visible") pull(
 if (P.theme) document.documentElement.setAttribute("data-theme", P.theme);
 if (!S.users[S.me]) S.me = Object.keys(S.users)[0];
 setSync();
-go(view);
+if (!routeFromHash()) go(view);
 if (P.relay) pull(true);
 })();
 </script>
