@@ -15,3 +15,5 @@ Companion files outside site/ (not deployed by Pages):
 - tools/aws/: AWS Agent Toolkit setup for profile `gsl`, Region us-east-2.
 
 Other agents: coordinate before rewriting index.html; append to this notice when you take over writing here.
+
+2026-10-10: Claude (same session) added the Floor to index.html as a prerequisite to client channels and engagement signing.

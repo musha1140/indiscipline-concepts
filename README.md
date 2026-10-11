@@ -16,7 +16,8 @@ Existing tickets and music destinations are retained. Photographs still use the 
 
 Gas-Lighting LLC's client messaging console, with Indiscipline as the first client workspace: https://gas-lighting.com/indiscipline-concepts/switchboard/
 
-- Channels per client, a unified inbox, threads, quick switcher (Ctrl K) and search.
+- The Floor comes first. Before anyone posts in a client's channels or signs an engagement step, both teams seat their people (lead, member or observer, and who may sign) and agree working terms: reply window, hours, time zone, decision rule, escalation and scope. A lead from each side accepts the same hashed version, and only the accepted version is enforced. Later changes become a pending version that takes effect when both leads accept again. Client members see nothing but the Floor until they hold a seat on the open version.
+- Channels per client, a unified inbox, threads, quick switcher (Ctrl K) and search. Leads' messages are tagged with the side they speak for.
 - Intake: inbound email is screened onto an 8 by 8 token board and a person releases, holds or discards it. Thin signal is reported as unknown, never as safe. Every decision is a hash-chained receipt.
 - Watermarked messages: an invisible zero-width mark records author, time and a hash of the visible words. Verify a copy reports intact, altered, damaged or absent.
 - Sealed channels: AES-GCM with a PBKDF2 passphrase, encrypted in the browser before storage or relay.

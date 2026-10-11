@@ -199,6 +199,27 @@ button.tag:hover{color:var(--text)}
 .verdict{margin-top:12px;padding:12px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);font-size:14px}
 .verdict.ok{border-color:var(--ok)}.verdict.bad{border-color:var(--accent)}.verdict.warn{border-color:var(--warn)}
 
+.floor-status{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 2px}
+.pill{font:700 11px/1 "JetBrains Mono",monospace;letter-spacing:.6px;text-transform:uppercase;border-radius:999px;padding:6px 10px;border:1px solid var(--line);color:var(--muted)}
+.pill.open{color:var(--ok);border-color:var(--ok)}
+.pill.draft{color:var(--warn);border-color:var(--warn)}
+.seat{display:grid;grid-template-columns:30px minmax(0,1fr) auto auto auto;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}
+.seat:first-of-type{border-top:0}
+.seat .avatar{width:30px;height:30px;font-size:11px}
+.seat .who{min-width:0}
+.seat .who b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.seat .who small{color:var(--faint);font-size:12px}
+.seat select{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:5px 6px;font-size:13px}
+.seat label{display:flex;gap:5px;align-items:center;font-size:12px;color:var(--muted);white-space:nowrap}
+.seat-add{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.seat-add select{flex:1;min-width:140px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.accept-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.accept-row:first-of-type{border-top:0}
+.accept-row .grow{flex:1;min-width:180px}
+.gate{margin:16px 22px 0;padding:14px 16px;border:1px solid var(--warn);border-radius:10px;background:var(--panel);font-size:14px;color:var(--muted)}
+.gate b{color:var(--text)}
+@media (max-width:820px){.seat{grid-template-columns:30px minmax(0,1fr) auto;}.seat label,.seat .rm{grid-column:2 / -1;justify-self:start}.gate{margin:12px 16px 0}}
+
 /* modal */
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:flex-start;justify-content:center;padding:10vh 16px 16px;z-index:50}
 .scrim.open{display:flex}
@@ -330,6 +351,7 @@ function seed() {
     intake: [],
     receipts: [],
     engagements: {},
+    floors: {},
     read: {}
   };
 }
@@ -339,7 +361,7 @@ function loadState() {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const s = JSON.parse(raw);
-      if (s && s.v === 1) return s;
+      if (s && s.v === 1) { if (!s.floors) s.floors = {}; return s; }
     }
   } catch (e) { /* storage blocked or corrupt: fall through to seed */ }
   return seed();
@@ -546,9 +568,11 @@ function unreadCount(cid) {
   return S.messages.filter((m) => m.channelId === cid && !m.replyTo && m.ts > last && m.author !== S.me).length;
 }
 function visibleChannels() {
-  // Client members see only their own org's channels; host members see everything.
+  // Host members see every channel. A client member sees their own organization's
+  // shared channels only once its Floor is open and they hold a seat on the accepted version.
   if (isHost(S.me)) return S.channels;
   const myOrg = user(S.me).org;
+  if (!openSeat(myOrg, S.me)) return [];
   return S.channels.filter((c) => c.orgId === myOrg && !c.internal);
 }
 function canSee(cid) { return visibleChannels().some((c) => c.id === cid); }
@@ -566,6 +590,7 @@ function renderNav() {
   h += `<div class="nav-label">Clients${host ? `<button id="addOrgBtn" title="Add client" aria-label="Add client">+</button>` : ""}</div>`;
   for (const o of orgs) {
     h += `<div class="org-head"><span class="org-dot" style="background:${colorFor(o.id)}"></span><span class="grow">${esc(o.name)}</span>${host ? `<button data-addchan="${o.id}" title="New channel">+ channel</button>` : ""}</div>`;
+    if (!o.host) h += navItem("floor:" + o.id, "▣", "Floor", floorBadge(o.id));
     for (const c of visibleChannels().filter((c) => c.orgId === o.id)) {
       const u = unreadCount(c.id);
       const glyph = c.sealed ? (keys[c.id] ? "◇" : "◈") : (c.internal ? "·" : "#");
@@ -597,6 +622,7 @@ function renderPersona() {
 
 function go(v) {
   if (v.startsWith("ch:") && !canSee(v.slice(3))) v = "inbox";
+  if (v.startsWith("floor:") && !canViewFloor(v.slice(6))) v = "inbox";
   view = v;
   P.view = v; savePrefs();
   query = "";
@@ -617,6 +643,7 @@ function render() {
   if (view === "intake" && isHost(S.me)) return renderIntake();
   if (view === "verify") return renderVerify();
   if (view.startsWith("eng:")) return renderEngagement(view.slice(4));
+  if (view.startsWith("floor:")) return renderFloor(view.slice(6));
   return renderInbox();
 }
 function setTitle(t, sub) { $("viewTitle").textContent = t; $("viewSub").textContent = sub || ""; document.title = t + " · Switchboard"; }
@@ -649,7 +676,12 @@ function renderInbox() {
     h += `<button class="row ${r.unread ? "unread" : ""}" data-go="ch:${r.c.id}"><span class="who">${esc(o ? o.name : "")} · ${esc(r.c.name)}</span><span class="snip">${r.last ? `<b>${esc(who)}</b> · ${esc(snippet(r.last))}` : esc(r.c.topic || "")}</span><time>${r.last ? fmtShort(r.last.ts) : ""}</time></button>`;
   }
   h += `</div>`;
-  if (!rows.length && !pending.length) h = `<div class="empty"><h3 class="display">Nothing here yet</h3><p>Channels you belong to will show up here.</p></div>`;
+  if (!rows.length && !pending.length) {
+    const mo = user(S.me).org;
+    h = !isHost(S.me) && mo && !openSeat(mo, S.me)
+      ? `<div class="empty"><h3 class="display">The floor isn't open yet</h3><p>Your channels with Gas-Lighting LLC open once both teams agree the floor.</p><p><button class="btn" data-go="floor:${mo}">Go to the floor</button></p></div>`
+      : `<div class="empty"><h3 class="display">Nothing here yet</h3><p>Channels you belong to will show up here.</p></div>`;
+  }
   $("content").innerHTML = h;
   $("content").querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => go(b.dataset.go)));
 }
@@ -667,6 +699,7 @@ function messageHTML(m, inThread) {
       <div class="msg-head"><b>${esc(label)}</b>${o ? `<span class="org">${esc(o.name)}${u.role && !m.authorLabel ? " · " + esc(roleLabel(u.role)) : ""}</span>` : ""}<time datetime="${new Date(m.ts).toISOString()}" title="${esc(fmtFull(m.ts))}">${fmtTime(m.ts)}</time></div>
       <div class="msg-body ${body == null ? "locked" : ""}">${body == null ? "Sealed. Unlock this channel to read." : esc(body)}</div>
       <div class="msg-meta">
+        ${speaksFor(m)}
         ${m.sealed ? `<span class="tag info">sealed</span>` : ""}
         ${m.via ? `<span class="tag">${esc(m.via)}</span>` : ""}
         ${marked ? `<button class="tag ok" data-verify="${m.id}" title="Check the integrity mark">marked</button>` : ""}
@@ -735,8 +768,12 @@ function renderChannel(cid) {
     $("unlockPass").addEventListener("keydown", (e) => { if (e.key === "Enter") go2(); });
     $("unlockPass").focus();
   }
+  const gate = postGate(c);
+  if (gate) $("content").insertAdjacentHTML("afterbegin", `<div class="gate">${gate}</div>`);
+  const fb = $("content").querySelector("[data-go-floor]");
+  if (fb) fb.addEventListener("click", () => go("floor:" + c.orgId));
   const comp = $("composer");
-  comp.hidden = locked;
+  comp.hidden = locked || !!gate;
   $("input").placeholder = "Message #" + c.name;
   $("composerHint").textContent = c.sealed ? "Encrypted before it is stored · Enter to send" : "Enter to send · Shift+Enter for a new line";
   const last = msgs.length ? msgs[msgs.length - 1].ts : 0;
@@ -763,6 +800,7 @@ async function unlock(cid, pass) {
 async function send(text, cid, replyTo) {
   const c = chan(cid);
   if (!c || !text.trim()) return;
+  if (postGate(c)) { toast("Posting here needs a seat on the open floor"); return; }
   let body = text.replace(/\s+$/, "");
   if ($("markToggle").checked) body = await stamp(body, S.me);
   const m = { id: uid("m"), channelId: cid, author: S.me, ts: Date.now(), body };
@@ -950,7 +988,7 @@ function renderEngagement(orgId) {
   STEPS.forEach((st, i) => {
     const rec = e.steps[i];
     const isNext = i === nextIdx;
-    const mine = (st.who === "host") === meHost;
+    const mine = canSign(orgId, st.who);
     h += `<div class="step ${rec ? "done" : ""} ${isNext ? "next" : ""}">
       <div class="n">${rec ? "✓" : i + 1}</div>
       <div>
@@ -958,16 +996,19 @@ function renderEngagement(orgId) {
         <div class="meta">${rec ? `Signed by ${esc(user(rec.by).name)} · ${esc(fmtFull(rec.ts))}${rec.note ? " · " + esc(rec.note) : ""}` : `Signed by the ${st.who === "host" ? "Gas-Lighting LLC" : esc(o.name)} side`}</div>
         ${rec ? `<div class="hash">${esc(rec.hash)}</div>` : ""}
       </div>
-      <div>${isNext ? (mine ? `<button class="btn sm" data-sign="${i}">Sign</button>` : `<span class="tag">waiting on ${st.who === "host" ? "GSL" : "client"}</span>`) : ""}</div>
+      <div>${isNext ? (mine ? `<button class="btn sm" data-sign="${i}">Sign</button>` : `<span class="tag">${floorOpen(orgId) ? "a " + (st.who === "host" ? "GSL" : "client") + " signer signs this" : "floor not open"}</span>`) : ""}</div>
     </div>`;
   });
   $("content").innerHTML = `<div class="pad"><div class="card" style="max-width:860px">
     <h3 class="display">${esc(o.name)}</h3>
-    <p class="sub">A step can be signed only after the one before it, and only by the side that owns it.</p>
+    <p class="sub">A step can be signed only after the one before it, and only by a seat on the open floor that holds signing authority for the side that owns it.</p>
+    ${floorOpen(orgId) ? "" : `<div class="verdict warn">Signing starts once the floor is open. <button class="link-btn" data-go-floor>Go to the floor</button></div>`}
     <div class="steps">${h}</div>
     <div class="actions" style="margin-top:14px"><button class="btn ghost" id="proofBtn">Proof run</button><button class="btn ghost" id="engExport">Export</button></div>
     <div class="proof" id="proofOut"></div></div></div>`;
   $("content").querySelectorAll("[data-sign]").forEach((b) => b.addEventListener("click", () => signStep(orgId, Number(b.dataset.sign))));
+  const gf = $("content").querySelector("[data-go-floor]");
+  if (gf) gf.addEventListener("click", () => go("floor:" + orgId));
   $("proofBtn").addEventListener("click", async () => {
     const r = await proofRun(orgId);
     $("proofOut").innerHTML = r.ok
@@ -980,6 +1021,7 @@ async function signStep(orgId, i) {
   const note = await ask("Sign: " + STEPS[i].name, [{ id: "note", label: "Note (optional)", placeholder: "Reference, link or remark" }], "Sign");
   if (!note) return;
   const e = engagement(orgId);
+  if (!canSign(orgId, STEPS[i].who)) { toast("Needs a signing seat on the open floor"); return; }
   if (e.steps[i] || (i > 0 && !e.steps[i - 1])) { toast("Out of order"); return; }
   let prev = "";
   for (let k = 0; k < i; k++) prev = e.steps[k].hash;
@@ -987,6 +1029,242 @@ async function signStep(orgId, i) {
   rec.hash = await sha256(stepMaterial(prev, i, rec));
   e.steps[i] = rec;
   save(); render();
+}
+
+/* ---------- floor: the agreed meeting ground between GSL's team and a client's team ---------- */
+const FLOOR_ROLES = [["lead", "Lead"], ["member", "Member"], ["observer", "Observer"]];
+const DECISIONS = [["leads", "Leads decide for their side"], ["both-leads", "Both leads must agree"], ["any", "Any seated member may decide"]];
+function hostOrg() { return S.orgs.find((o) => o.host); }
+function benchOrgId(orgId, bench) { return bench === "host" ? (hostOrg() || {}).id : orgId; }
+function benchName(orgId, bench) { const o = org(benchOrgId(orgId, bench)); return o ? o.name : bench; }
+function floor(orgId) {
+  if (!S.floors[orgId]) {
+    let tz = "America/Chicago";
+    try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || tz; } catch (e) { /* keep default */ }
+    S.floors[orgId] = {
+      version: 1,
+      seats: [],
+      terms: { response: 24, hours: "Weekdays 10:00 to 18:00", tz, escalation: "Lead to lead in writing; a call within one business day if it stays unresolved", scope: "", decision: "leads" },
+      accepts: { host: null, client: null },
+      open: null,
+      chain: []
+    };
+  }
+  return S.floors[orgId];
+}
+function floorOpen(orgId) { const f = S.floors[orgId]; return !!(f && f.open); }
+function openSeat(orgId, uidv) {
+  const f = S.floors[orgId];
+  return f && f.open ? f.open.seats.find((s) => s.uid === uidv) || null : null;
+}
+function canViewFloor(orgId) {
+  const o = org(orgId);
+  if (!o || o.host) return false;
+  return isHost(S.me) || user(S.me).org === orgId;
+}
+function canSign(orgId, side) {
+  const s = openSeat(orgId, S.me);
+  return !!(s && s.bench === side && s.sign && s.role !== "observer");
+}
+function postGate(c) {
+  const o = org(c.orgId);
+  if (!o || o.host) return "";
+  const f = S.floors[c.orgId];
+  if (!f || !f.open) return `<b>The floor with ${esc(o.name)} isn't open.</b> Both teams seat their people and accept the same terms before anyone posts here. <button class="link-btn" data-go-floor>Go to the floor</button>`;
+  const s = openSeat(c.orgId, S.me);
+  if (!s) return `<b>You don't hold a seat on this floor.</b> You can read; posting needs a seat on the accepted version. <button class="link-btn" data-go-floor>Go to the floor</button>`;
+  if (s.role === "observer") return `<b>You're seated as an observer.</b> Observers read; leads and members post.`;
+  return "";
+}
+function speaksFor(m) {
+  const c = chan(m.channelId);
+  if (!c || m.authorLabel) return "";
+  const s = openSeat(c.orgId, m.author);
+  return s && s.role === "lead" ? `<span class="tag info">speaks for ${esc(benchName(c.orgId, s.bench))}</span>` : "";
+}
+function floorBadge(orgId) {
+  const f = S.floors[orgId];
+  if (!f || !f.open) return `<span class="badge soft">draft</span>`;
+  return `<span class="badge soft">${f.version > f.open.version ? "amending" : "open"}</span>`;
+}
+function stable(v) {
+  if (Array.isArray(v)) return "[" + v.map(stable).join(",") + "]";
+  if (v && typeof v === "object") return "{" + Object.keys(v).sort().map((k) => JSON.stringify(k) + ":" + stable(v[k])).join(",") + "}";
+  return JSON.stringify(v === undefined ? null : v);
+}
+function floorDoc(orgId, f, seats, terms, version) {
+  return stable({
+    client: orgId,
+    host: (hostOrg() || {}).id,
+    version,
+    seats: seats.slice().sort((a, b) => (a.bench + a.uid).localeCompare(b.bench + b.uid)).map((s) => ({ uid: s.uid, name: user(s.uid).name, bench: s.bench, role: s.role, sign: !!s.sign })),
+    terms
+  });
+}
+function floorEdited(f) {
+  // Any change after an acceptance or an open starts a new version; earlier acceptances no longer count.
+  if (f.accepts.host || f.accepts.client || (f.open && f.open.version === f.version)) f.version++;
+  f.accepts = { host: null, client: null };
+}
+async function floorChain(f, rec) {
+  const prev = f.chain.length ? f.chain[f.chain.length - 1].hash : "genesis";
+  rec.hash = await sha256(prev + "|" + [rec.kind, rec.bench || "", rec.by || "", rec.ts, rec.version, rec.terms].join("|"));
+  f.chain.push(rec);
+  return rec;
+}
+async function acceptFloor(orgId, bench) {
+  const f = floor(orgId);
+  const seat = f.seats.find((s) => s.uid === S.me && s.bench === bench);
+  if (!seat || seat.role !== "lead") { toast("Only a lead seated on that side can accept"); return; }
+  const leads = ["host", "client"].map((b) => f.seats.some((s) => s.bench === b && s.role === "lead"));
+  if (!leads[0] || !leads[1]) { toast("Each side needs a lead before the floor can open"); return; }
+  const th = await sha256(floorDoc(orgId, f, f.seats, f.terms, f.version));
+  const rec = await floorChain(f, { kind: "accept", bench, by: S.me, ts: Date.now(), version: f.version, terms: th });
+  f.accepts[bench] = rec;
+  const other = f.accepts[bench === "host" ? "client" : "host"];
+  if (other && other.terms === th && other.version === f.version) {
+    f.open = { version: f.version, terms: th, ts: Date.now(), seats: JSON.parse(JSON.stringify(f.seats)), agreed: JSON.parse(JSON.stringify(f.terms)) };
+    await floorChain(f, { kind: "open", ts: f.open.ts, version: f.version, terms: th });
+    toast(`Floor open on version ${f.version}`);
+  } else toast("Accepted. Waiting on the other side's lead.");
+  save(); render();
+}
+async function proveFloor(orgId) {
+  const f = floor(orgId);
+  let prev = "genesis";
+  for (let i = 0; i < f.chain.length; i++) {
+    const r = f.chain[i];
+    const h = await sha256(prev + "|" + [r.kind, r.bench || "", r.by || "", r.ts, r.version, r.terms].join("|"));
+    if (h !== r.hash) return `Record ${i + 1} does not reproduce; the floor record was edited after the fact.`;
+    prev = h;
+  }
+  if (f.open) {
+    const h = await sha256(floorDoc(orgId, f, f.open.seats, f.open.agreed, f.open.version));
+    if (h !== f.open.terms) return "The seats or terms in force differ from what both leads accepted.";
+  }
+  return "";
+}
+function renderFloor(orgId) {
+  const o = org(orgId);
+  if (!o || !canViewFloor(orgId)) return go("inbox");
+  const f = floor(orgId);
+  const pending = f.open && f.version > f.open.version;
+  setTitle("Floor · " + o.name, "Where Gas-Lighting LLC's team and " + o.name + "'s team agree who speaks, who signs, and how they work together");
+  const status = f.open
+    ? `<span class="pill open">open · v${f.open.version}</span><span class="hint">since ${esc(fmtFull(f.open.ts))}</span>${pending ? `<span class="pill draft">v${f.version} pending</span><span class="hint">changes apply once both leads accept</span>` : ""}`
+    : `<span class="pill draft">not open · draft v${f.version}</span><span class="hint">client channels and signing stay closed until both leads accept</span>`;
+  const benchCard = (bench) => {
+    const bOrg = benchOrgId(orgId, bench);
+    const seats = f.seats.filter((s) => s.bench === bench);
+    const eligible = Object.entries(S.users).filter(([id, u]) => u.org === bOrg && !seats.some((s) => s.uid === id));
+    return `<div class="card">
+      <h3 class="display">${esc(benchName(orgId, bench))}</h3>
+      <p class="sub">${bench === "host" ? "Our team" : "Their team"} · ${seats.length} seated</p>
+      ${seats.map((s) => {
+        const u = user(s.uid);
+        return `<div class="seat">
+          ${avatarHTML(s.uid)}
+          <div class="who"><b>${esc(u.name)}</b><small>${esc(roleLabel(u.role) || "member")} at ${esc((org(u.org) || {}).name || "")}</small></div>
+          <select data-seat-role="${bench}|${s.uid}" aria-label="Floor role for ${esc(u.name)}">${FLOOR_ROLES.map((r) => `<option value="${r[0]}" ${r[0] === s.role ? "selected" : ""}>${r[1]}</option>`).join("")}</select>
+          <label><input type="checkbox" data-seat-sign="${bench}|${s.uid}" ${s.sign ? "checked" : ""} ${s.role === "observer" ? "disabled" : ""}> signs</label>
+          <button class="chip-btn rm" data-seat-rm="${bench}|${s.uid}">Unseat</button>
+        </div>`;
+      }).join("") || `<p class="sub">Nobody seated yet.</p>`}
+      <div class="seat-add">
+        <select data-seat-pick="${bench}" aria-label="Person to seat">${eligible.length ? eligible.map(([id, u]) => `<option value="${id}">${esc(u.name)}${u.role ? " · " + esc(roleLabel(u.role)) : ""}</option>`).join("") : `<option value="">No unseated members</option>`}</select>
+        <button class="btn ghost sm" data-seat-add="${bench}" ${eligible.length ? "" : "disabled"}>Seat</button>
+        <button class="btn ghost sm" data-seat-new="${bench}">New person</button>
+      </div>
+    </div>`;
+  };
+  const acceptRow = (bench) => {
+    const a = f.accepts[bench];
+    const meLead = f.seats.some((s) => s.uid === S.me && s.bench === bench && s.role === "lead");
+    return `<div class="accept-row">
+      <div class="grow"><b>${esc(benchName(orgId, bench))}</b><br><span class="hint">${a ? `Accepted v${a.version} by ${esc(user(a.by).name)} · ${esc(fmtFull(a.ts))}` : "Waiting on a lead from this side"}</span></div>
+      ${!a && meLead ? `<button class="btn sm" data-accept="${bench}">Accept v${f.version} as lead</button>` : a ? `<span class="tag ok">accepted</span>` : `<span class="tag">lead only</span>`}
+    </div>`;
+  };
+  const t = f.terms;
+  const record = f.chain.slice().reverse().map((r) => `<div>${esc(fmtFull(r.ts))} · ${r.kind === "open" ? `floor opened on v${r.version}` : `v${r.version} accepted for ${esc(benchName(orgId, r.bench))} by ${esc(user(r.by).name)}`}<br>terms ${esc(r.terms.slice(0, 16))} · chain ${esc(r.hash.slice(0, 16))}</div>`).join("");
+  $("content").innerHTML = `<div class="pad">
+    <div class="card" style="margin-bottom:18px"><h3 class="display">${esc(o.name)} floor</h3><div class="floor-status">${status}</div></div>
+    <div class="grid2">${benchCard("host")}${benchCard("client")}</div>
+    <div class="grid2" style="margin-top:18px">
+      <div class="card">
+        <h3 class="display">Terms</h3>
+        <p class="sub">How the two teams work together. Saving a change starts a new version.</p>
+        <label class="field"><span>Reply within (business hours)</span><input id="tResp" type="number" min="1" max="720" value="${esc(t.response)}"></label>
+        <label class="field"><span>Working hours</span><input id="tHours" value="${esc(t.hours)}"></label>
+        <label class="field"><span>Time zone</span><input id="tTz" value="${esc(t.tz)}"></label>
+        <label class="field"><span>Decisions</span><select id="tDec">${DECISIONS.map((d) => `<option value="${d[0]}" ${d[0] === t.decision ? "selected" : ""}>${d[1]}</option>`).join("")}</select></label>
+        <label class="field"><span>Escalation</span><input id="tEsc" value="${esc(t.escalation)}"></label>
+        <label class="field"><span>Scope on this floor</span><input id="tScope" value="${esc(t.scope)}" placeholder="What the teams cover here, and what stays off it"></label>
+        <div class="actions"><button class="btn ghost" id="tSave">Save terms</button></div>
+      </div>
+      <div class="card">
+        <h3 class="display">Acceptance</h3>
+        <p class="sub">A lead from each side accepts the same version. That version's seats and terms are the ones enforced.</p>
+        ${acceptRow("host")}${acceptRow("client")}
+        <h3 class="display" style="margin-top:18px;font-size:18px">Floor record</h3>
+        <div class="actions" style="margin:6px 0 10px"><button class="btn ghost sm" id="fProof">Proof</button><button class="btn ghost sm" id="fExport">Export</button></div>
+        <div id="fProofOut"></div>
+        <div class="receipts">${record || "Nothing accepted yet."}</div>
+      </div>
+    </div></div>`;
+
+  const root = $("content");
+  const seatOf = (key) => { const [bench, id] = key.split("|"); return f.seats.find((s) => s.bench === bench && s.uid === id); };
+  root.querySelectorAll("[data-seat-role]").forEach((el) => el.addEventListener("change", () => {
+    const s = seatOf(el.dataset.seatRole); if (!s) return;
+    s.role = el.value; if (s.role === "observer") s.sign = false;
+    floorEdited(f); save(); render();
+  }));
+  root.querySelectorAll("[data-seat-sign]").forEach((el) => el.addEventListener("change", () => {
+    const s = seatOf(el.dataset.seatSign); if (!s) return;
+    s.sign = el.checked; floorEdited(f); save(); render();
+  }));
+  root.querySelectorAll("[data-seat-rm]").forEach((el) => el.addEventListener("click", () => {
+    const [bench, id] = el.dataset.seatRm.split("|");
+    f.seats = f.seats.filter((s) => !(s.bench === bench && s.uid === id));
+    floorEdited(f); save(); render();
+  }));
+  root.querySelectorAll("[data-seat-add]").forEach((el) => el.addEventListener("click", () => {
+    const bench = el.dataset.seatAdd;
+    const pick = root.querySelector(`[data-seat-pick="${bench}"]`);
+    if (!pick || !pick.value) return;
+    f.seats.push({ uid: pick.value, bench, role: "member", sign: false });
+    floorEdited(f); save(); render();
+  }));
+  root.querySelectorAll("[data-seat-new]").forEach((el) => el.addEventListener("click", async () => {
+    const bench = el.dataset.seatNew;
+    const bOrg = benchOrgId(orgId, bench);
+    const r = await ask("New person · " + benchName(orgId, bench), [
+      { id: "name", label: "Name" },
+      { id: "role", label: "Role at " + benchName(orgId, bench), type: "select", options: ROLES.map((x) => ({ value: x[0], label: x[1] })), value: bench === "host" ? "team" : "client" },
+      { id: "floor", label: "Floor role", type: "select", options: FLOOR_ROLES.map((x) => ({ value: x[0], label: x[1] })), value: "member" }
+    ], "Seat");
+    if (!r || !r.name.trim()) return;
+    const id = uid("u");
+    S.users[id] = { name: r.name.trim(), org: bOrg, role: r.role };
+    f.seats.push({ uid: id, bench, role: r.floor, sign: false });
+    floorEdited(f); save(); render();
+  }));
+  $("tSave").addEventListener("click", () => {
+    const next = {
+      response: Math.max(1, Math.min(720, parseInt($("tResp").value, 10) || 24)),
+      hours: $("tHours").value.trim(), tz: $("tTz").value.trim(),
+      decision: $("tDec").value, escalation: $("tEsc").value.trim(), scope: $("tScope").value.trim()
+    };
+    if (stable(next) === stable(f.terms)) { toast("No changes"); return; }
+    f.terms = next; floorEdited(f); save(); render(); toast("Terms saved as v" + f.version);
+  });
+  root.querySelectorAll("[data-accept]").forEach((el) => el.addEventListener("click", () => acceptFloor(orgId, el.dataset.accept)));
+  $("fProof").addEventListener("click", async () => {
+    const bad = await proveFloor(orgId);
+    $("fProofOut").innerHTML = bad ? `<div class="verdict bad">${esc(bad)}</div>` : `<div class="verdict ok">Every acceptance reproduces${f.open ? " and the seats and terms in force match what both leads accepted" : ""}.</div>`;
+  });
+  $("fExport").addEventListener("click", () => download(`floor-${o.name.toLowerCase().replace(/\W+/g, "-")}.json`, JSON.stringify({ client: o, host: hostOrg(), floor: f, people: Object.fromEntries(f.seats.concat(f.open ? f.open.seats : []).map((s) => [s.uid, S.users[s.uid]])) }, null, 2)));
 }
 
 /* ---------- modals ---------- */
@@ -1076,6 +1354,7 @@ function quickSwitch() {
     items = visibleChannels().map((c) => ({ v: "ch:" + c.id, label: "#" + c.name, sub: org(c.orgId).name }))
       .concat([{ v: "inbox", label: "Inbox", sub: "" }, { v: "verify", label: "Verify a copy", sub: "" }])
       .concat(isHost(S.me) ? [{ v: "intake", label: "Intake", sub: "" }] : [])
+      .concat(S.orgs.filter((o) => !o.host && canViewFloor(o.id)).map((o) => ({ v: "floor:" + o.id, label: "Floor", sub: o.name })))
       .filter((i) => (i.label + " " + i.sub).toLowerCase().includes(q));
     sel = Math.min(sel, Math.max(0, items.length - 1));
     $("qsList").innerHTML = items.map((i, k) => `<button class="${k === sel ? "sel" : ""}" data-k="${k}">${esc(i.label)}<small>${esc(i.sub)}</small></button>`).join("");
@@ -1171,6 +1450,7 @@ function mergeState(remote, local) {
   const rr = remote.receipts || [], lr = local.receipts || [];
   out.receipts = rr.length >= lr.length ? rr : lr;
   out.engagements = Object.assign({}, local.engagements || {}, remote.engagements || {});
+  out.floors = Object.assign({}, local.floors || {}, remote.floors || {});
   return out;
 }
 async function configureRelay() {
@@ -1229,6 +1509,7 @@ $("importFile").addEventListener("change", async (e) => {
     S = data;
     if (!S.users[S.me]) S.me = Object.keys(S.users)[0];
     S.read = S.read || {};
+    S.floors = S.floors || {};
     save(); go("inbox"); toast("Imported");
   } catch (err) { toast("That file is not a Switchboard export"); }
   e.target.value = "";
