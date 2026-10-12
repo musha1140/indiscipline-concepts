@@ -151,7 +151,7 @@ dd{margin:0}
         <dt>Sanity</dt><dd>So the band edits shows, photos and links without touching code. Free covers an administrator; Growth is needed the day an editor role or scheduled publishing is wanted.</dd>
         <dt>GitHub</dt><dd>The code has to live somewhere the band owns. Pro gives a private repository with history, so any change can be undone.</dd>
         <dt>Vercel</dt><dd>It builds and serves the site on every push, with SSL included. Pro, not Hobby, because Hobby forbids commercial use.</dd>
-        <dt>Cloudflare</dt><dd>DNS, caching and a filter in front of the site. The $10 is the scope note's estimate for 10 GB a month, not a published plan price.</dd>
+        <dt>Cloudflare</dt><dd>DNS, caching and a filter in front of the site. The $10 is the scope note's estimate for 10 GB a month. Cloudflare is not free and gets expensive at scale; the estimate holds for a band site's traffic and rises with it.</dd>
         <dt>R2 and Lambda</dt><dd>Photos and video are heavy; R2 stores them at cents per gigabyte with no egress fee. Lambda runs only the few server jobs the site needs, because idle time costs nothing and latency costs a lot.</dd>
         <dt>Domain</dt><dd>The band's name on the band's registration. Costed in full, per name, below.</dd>
         <dt>Email and Notion</dt><dd>Optional. Listed because the band asked what a mailbox and a shared workspace cost; not required for the site to run.</dd>
@@ -167,7 +167,7 @@ dd{margin:0}
           <tr><td>Sanity</td><td>The editing dashboard (CMS). Free plan: $0, 20 seats, Administrator and Viewer roles only, so the band's editor is an Administrator. Growth plan, if Editor roles or scheduled publishing are wanted: $15 per seat a month.</td><td class="num">$0 (Free) or $15 a seat a month (Growth)</td></tr>
           <tr><td>GitHub</td><td>Code repository, Pro plan, one user</td><td class="num">$4 a month</td></tr>
           <tr><td>Vercel</td><td>Hosting, Pro plan: $20 a month platform fee with $20 of usage credit inside it; each additional team seat $20 a month; usage above the credit at Vercel's metered rates</td><td class="num">$20 a month, one seat</td></tr>
-          <tr><td>Cloudflare</td><td>DNS and security, 10 GB bandwidth a month, as you go</td><td class="num">$10 a month, estimated</td></tr>
+          <tr><td>Cloudflare</td><td>DNS and security, 10 GB bandwidth a month, metered as you go; rises with traffic</td><td class="num">$10 a month, estimated at this traffic</td></tr>
           <tr><td>AWS, Cloudflare R2, Lambda</td><td>Media storage and serverless, metered. Lambda only where it is needed: if latency builds up its price climbs fast, so it is used surgically.</td><td class="num">Metered, cents a month at this traffic; shown on the bill, not estimated here</td></tr>
           <tr><td>Domain name</td><td>Registered in the band's name. The checked names below run $11.25 to $29.99 a year at the Vercel registrar; Porkbun or GoDaddy fall in the same range</td><td class="num">$11.25 a year for a .com, $0.94 a month</td></tr>
           <tr><td>Business email, Microsoft 365</td><td>Optional, through Porkbun or GoDaddy; a 3-user setup is the usual default</td><td class="num">From about $10 a user a month</td></tr>
@@ -209,7 +209,7 @@ dd{margin:0}
       <dl>
         <dt>Registration</dt><dd>First year, then renewal, at the Vercel registrar on October 11, 2026. Some names are cheap to buy and dear to keep (.live is $3.99 then $35.00); the renewal is the real price.</dd>
         <dt>WHOIS privacy</dt><dd>Keeps the band's address and phone out of the public registry. $0 at Porkbun, always, published. A registrar that charges for it is the wrong registrar.</dd>
-        <dt>DNS</dt><dd>Cloudflare in front of the name: $10 a month, the scope note's estimate for 10 GB. Cloudflare's own Free plan is published at $0 if the band chooses to run without the paid bandwidth.</dd>
+        <dt>DNS</dt><dd>Cloudflare in front of the name: $10 a month, the scope note's estimate for 10 GB of traffic. It is metered, not free: the bill grows with bandwidth, and at scale it is one of the larger lines, so the estimate is for this band's traffic and is re-read against the real bill each month.</dd>
         <dt>SSL</dt><dd>$0. The certificate is issued and renewed by Vercel and Cloudflare as part of their plans already counted above.</dd>
         <dt>Email</dt><dd>Three mailboxes, the usual default. Porkbun Email is $3.00 a mailbox a month with 10 GB each, forwarding $0; Microsoft 365 Business Basic is $7.00 a user a month paid yearly from July 1, 2026 ($5.40 without Teams). The last column shows the Microsoft route.</dd>
         <dt>Totals</dt><dd>Registration spread over twelve months, plus DNS, plus email. Year one and renewal differ only by the registration. The $34.94 a month for hosting and the dashboard above is on top of this, once, not per name.</dd>
@@ -245,20 +245,15 @@ dd{margin:0}
       <h3>Why it is priced this way</h3>
       <dl>
         <dt>Why apart from the build</dt><dd>Code is labor at a rate. Art is a work with its own value and its own maker. Mixing them would price her hours like mine and her work like code.</dd>
-        <dt>Why on gross</dt><dd>So the artist never sees a fee. The number she is told is the number she gets.</dd>
-        <dt>Why 80/20</dt><dd>Gas-Lighting LLC's opening position for carrying the fees, the ledger, the attestation and the tests. She can refuse it; it is Proposed until she accepts.</dd>
         <dt>Why a gate</dt><dd>Because the whole promise is that the art is human-made. No attestation, no date of use, no payment.</dd>
         <dt>Why an index and not a price list</dt><dd>Her gallery lists no prices, and a list would go stale. A formula stays fair as pieces, terms and placements change.</dd>
       </dl>
-      <h3>The proposed split</h3>
+      <h3>How a piece is paid for</h3>
       <dl>
-        <dt>Artist share</dt><dd>80% of gross. This is Gas-Lighting LLC's opening position and reads Proposed until my artist accepts it in writing.</dd>
-        <dt>Gas-Lighting LLC</dt><dd>20% of gross. Out of it come every collection and payout fee, the ledger, the attestation checks and the forensic tests. On a $40 card use that leaves $6.54.</dd>
-        <dt>Fees</dt><dd>"Gas" means transaction fees, not fuel. The band and the artist see plain dollars; Gas-Lighting LLC carries every card, bank and payout fee out of its own share. The artist's share is computed on gross and is never reduced by a fee.</dd>
-        <dt>Frozen per row</dt><dd>Each ledger row freezes the split, the rate and the fee rates it used, so a later change never recomputes an old payment.</dd>
-        <dt>Fee-share cap</dt><dd>If fees would eat more than half of Gas-Lighting LLC's retained share, the row goes to a person for review instead of out the door.</dd>
         <dt>Gate</dt><dd>An art payment cannot come due unless the piece carries the artist's own "Made by hand" attestation and a date it was used.</dd>
-        <dt>Rails</dt><dd>Card or bank transfer in from the band; Zelle or bank transfer out to the artist. No crypto. Until the rails are connected every row is a paper simulation and nothing is paid.</dd>
+        <dt>Fees</dt><dd>The band pays the price shown and nothing on top of it. Card and bank fees are carried by Gas-Lighting LLC, never added to the band's price.</dd>
+        <dt>Rails</dt><dd>Card or bank transfer in from the band. No crypto. Until the rails are connected every row is a paper simulation and nothing is paid.</dd>
+        <dt>With the artist</dt><dd>What she is paid for a use is set with her, in writing, before any piece is placed. It is not on this page because it has not been agreed.</dd>
       </dl>
     </div>
     <div>
@@ -266,15 +261,15 @@ dd{margin:0}
       <p class="small">Simulations under the proposed split. Nothing has been paid on any of these.</p>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Use</th><th>Rail</th><th class="num">Gross</th><th class="num">Fee</th><th class="num">To the artist</th><th class="num">Retained</th></tr></thead>
+          <thead><tr><th>Use</th><th>Rail</th><th class="num">Price to the band</th></tr></thead>
           <tbody>
-            <tr><td>Band licenses one artwork for the site</td><td>Card</td><td class="num">$400.00</td><td class="num">$11.90</td><td class="num">$320.00</td><td class="num">$68.10</td></tr>
-            <tr><td>Band commissions a flyer</td><td>ACH</td><td class="num">$1,200.00</td><td class="num">$5.00</td><td class="num">$960.00</td><td class="num">$235.00</td></tr>
-            <tr><td>A small art use, to show the cap</td><td>Card</td><td class="num">$40.00</td><td class="num">$1.46</td><td class="num">$32.00</td><td class="num">$6.54</td></tr>
+            <tr><td>Band licenses one artwork for the site</td><td>Card</td><td class="num">$400.00</td></tr>
+            <tr><td>Band commissions a flyer</td><td>ACH</td><td class="num">$1,200.00</td></tr>
+            <tr><td>A small art use</td><td>Card</td><td class="num">$40.00</td></tr>
           </tbody>
         </table>
       </div>
-      <p class="small" style="margin-top:10px">The math: fee = gross × 2.9% + $0.30 on card, or gross × 0.8% capped at $5.00 on ACH; artist = gross × 0.80; retained = gross − artist − fee. $400 × 2.9% + $0.30 = $11.90; $400 × 0.80 = $320.00; $400 − $320.00 − $11.90 = $68.10. On the $40 use the fee is $1.46, which is 18% of the $8 share, under the one-half cap; with these fee rates the cap only trips below about $4.25 gross. Why the cap: a payment where fees eat half the margin is a payment a person should look at before it goes out.</p>
+      <p class="small" style="margin-top:10px">The price is the whole of what the band pays. Nothing is added for fees, and nothing here has been paid; these are paper rows.</p>
       <h3 style="margin-top:22px">Fixed rates: the index</h3>
       <p class="small">The index is not a menu of pieces and it is not read off the artist's gallery, which lists no prices. It is one formula, scaled to her work, with labor kept separate.</p>
       <dl>
@@ -285,11 +280,8 @@ dd{margin:0}
         <dt>N, amount</dt><dd>How many placements the band takes: one site placement is 1; each additional placement (a flyer, a post, a thumbnail) adds its own count at the small-use rate.</dd>
         <dt>Labor, separate</dt><dd>A commissioned new piece is the artist's time at her hourly rate, agreed with her before art hours begin, and billed apart from the index. The index prices the use of a finished piece; it never prices her hours.</dd>
       </dl>
-      <p class="small" style="margin-top:12px">No example rates are shown here on purpose. A rate exists only once a piece is named, its size-to-depth ratio is measured against her reference piece, the term is set and the placements are counted. Then it is one multiplication from the $400 base, and the row freezes. The 80/20 split, the fee rules and the attestation gate apply to every row. Everything here reads Proposed until the artist accepts it.</p>
-      <h3 style="margin-top:22px">The average of the three</h3>
-      <p class="small">Gross mean $546.67. The bar is what the probe below starts from.</p>
-      <div class="bar"><div class="artist" style="flex:437.33">$437.33</div><div class="company" style="flex:109.33">$109.33</div></div>
-      <div class="legend"><span><i style="background:#2f7d34"></i>Artist 80%</span><span><i style="background:#2f6690"></i>Gas-Lighting LLC 20%</span></div>
+      <p class="small" style="margin-top:12px">No example rates are shown here on purpose. A rate exists only once a piece is named, its size-to-depth ratio is measured against her reference piece, the term is set and the placements are counted. Then it is one multiplication from the $400 base, and the row freezes. The attestation gate applies to every row. Everything here reads Proposed until the artist accepts it.</p>
+      
     </div>
   </div>
 </section>
@@ -307,10 +299,9 @@ dd{margin:0}
         <li><span class="sym">𝓕</span><span>The spectrum of that residual. Generators that build an image by upsampling leave periodic peaks on a lattice. <b>T</b> is the mean excess of those peaks: the tell. The method follows GANDCTAnalysis (ICML 2020) and CNNDetection (CVPR 2020).</span></li>
         <li><span class="sym">z²+c</span><span>The residual is fed as a perturbation into an iterated Mandelbrot step. <b>Δ</b> is the share of escape counts the picture moves across the Full and Dive views: how much of the set the picture's own noise disturbs.</span></li>
         <li><span class="sym">0·1</span><span>The gate. If T is at or above 0.5 the piece reads as machine-made and the gate is 0: nothing is paid as human work. The 0.5 line is uncalibrated and is marked as such.</span></li>
-        <li><span class="sym">$</span><span>The price. A human piece earns gross plus a noise value of up to 40% of gross, scaled by Δ, split 80/20. At Δ = 100% the mean example becomes $765.33 gross: $612.27 to the artist, $153.07 to Gas-Lighting LLC.</span></li>
+        <li><span class="sym">$</span><span>The price. A human piece earns its price plus a noise value of up to 40% of that price, scaled by Δ. At Δ = 100% the mean of the three paper uses, $546.67, becomes $765.33.</span></li>
       </ol>
-      <div class="bar"><div class="artist" style="flex:437.33">$437.33</div><div class="noise" style="flex:218.67">noise up to $218.67</div><div class="company" style="flex:109.33">$109.33</div></div>
-      <div class="legend"><span><i style="background:#2f7d34"></i>Artist 80% of gross</span><span><i style="background:#e0a84a"></i>Noise value, 40% of gross × Δ</span><span><i style="background:#2f6690"></i>Gas-Lighting LLC 20%</span></div>
+      
       <div class="actions"><a class="button" href="assets/tell-probe.html">Open the tell probe<svg class="ic-arrow" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10"/></svg></a><a class="button ghost" href="assets/noise-maps.html">Noise maps<svg class="ic-arrow" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10"/></svg></a></div>
     </div>
     <div>
