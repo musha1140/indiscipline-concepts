@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tell Probe</title>
+<style>
+  /* Visual pipeline: picture -> noise residual -> spectrum (the tell) -> Mandelbrot step perturbed by the residual -> gate -> price.
+     Method follows the frequency-analysis line of work (RUB-SysSec/GANDCTAnalysis, ICML 2020; PeterWang512/CNNDetection, CVPR 2020):
+     generator upsampling leaves periodic peaks in the spectrum of the high-pass residual. */
+  :root { --bg:#0a0c11; --surface:#12161e; --line:#273041; --fg:#ece9e1; --muted:#8b93a1;
+    --gold:#e0a63a; --co:#7fa7e8; --zero:#e0523a; --hit:#ff4fd8; --cyan:#54d6c6;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--mono); }
+  .wrap { padding: 14px 16px 16px; max-width: 1100px; margin: 0 auto; }
+  .row { display: grid; gap: 10px; align-items: stretch; }
+  .r1 { grid-template-columns: 1.2fr auto 1fr auto 1fr; }
+  .r2 { grid-template-columns: 1fr 1fr; margin-top: 10px; }
+  .r3 { grid-template-columns: auto 1fr; margin-top: 10px; }
+  @media (max-width: 720px) {
+    .r1 { grid-template-columns: 1fr; } .r1 .arrow { transform: rotate(90deg); justify-self: center; }
+    .r2, .r3 { grid-template-columns: 1fr; }
+  }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px; min-width: 0; position: relative; }
+  .tag { position: absolute; top: 12px; left: 12px; z-index: 2; font-size: .9rem; background: rgba(5,7,10,.75);
+    border: 1px solid var(--line); border-radius: 5px; padding: 1px 7px; color: var(--fg); pointer-events: none; }
+  canvas { display: block; width: 100%; height: auto; border-radius: 6px; background: #05070a; image-rendering: auto; }
+  .arrow { align-self: center; color: var(--gold); font-size: 1.4rem; }
+  .drop { position: absolute; inset: 8px; border: 2px dashed var(--line); border-radius: 6px; display: none;
+    align-items: center; justify-content: center; flex-direction: column; gap: 8px; color: var(--muted); font-size: 2rem; cursor: pointer; }
+  .drop.on { display: flex; }
+  .drop.hover { border-color: var(--gold); color: var(--gold); }
+  .views { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .meter { position: relative; height: 14px; border-radius: 7px; background: #191e28; border: 1px solid var(--line); overflow: hidden; }
+  .meter i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: linear-gradient(90deg, var(--cyan), var(--hit)); transition: width .4s; }
+  .meter b { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--fg); left: 50%; }
+  .gate { display: flex; gap: 8px; }
+  .chip { width: 64px; height: 64px; border: 1px solid var(--line); border-radius: 8px; display: flex; align-items: center;
+    justify-content: center; font-size: 2rem; color: var(--muted); transition: all .3s; }
+  .chip.on.z { color: var(--zero); border-color: var(--zero); box-shadow: 0 0 14px rgba(224,82,58,.35); }
+  .chip.on.o { color: var(--gold); border-color: var(--gold); box-shadow: 0 0 14px rgba(224,166,58,.35); }
+  .money { display: grid; gap: 8px; }
+  .bar { display: flex; height: 26px; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); background: #191e28; }
+  .bar span { display: flex; align-items: center; justify-content: center; font-size: .78rem; color: #0a0c11; white-space: nowrap;
+    overflow: hidden; transition: flex .4s; font-variant-numeric: tabular-nums; }
+  .bar .a { background: var(--gold); } .bar .n { background: var(--hit); } .bar .c { background: var(--co); }
+  .ghost { opacity: .35; }
+  .big { font-size: 2rem; font-variant-numeric: tabular-nums; }
+  .big.zero { color: var(--zero); } .big.pos { color: var(--gold); }
+  .ctl { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: .95rem; color: var(--muted); flex-wrap: wrap; }
+  input[type=range] { flex: 1; min-width: 140px; accent-color: var(--hit); }
+  button { font-family: var(--mono); font-size: .9rem; color: var(--fg); background: #191e28; border: 1px solid var(--line);
+    border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+  button:hover { border-color: var(--gold); }
+  .tiny { font-size: .66rem; color: var(--muted); margin-top: 10px; line-height: 1.6; }
+  .tiny a { color: var(--muted); }
+  .num { font-variant-numeric: tabular-nums; color: var(--fg); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="row r1">
+    <div class="card" id="srcCard">
+      <span class="tag">🖼</span>
+      <canvas id="src" width="640" height="480"></canvas>
+      <div class="drop" id="drop">⤓<span style="font-size:.8rem">drop · paste · click</span></div>
+      <input type="file" id="file" accept="image/*" hidden>
+    </div>
+    <div class="arrow">→</div>
+    <div class="card"><span class="tag">∇</span><canvas id="res" width="256" height="256"></canvas></div>
+    <div class="arrow">→</div>
+    <div class="card"><span class="tag">𝓕</span><canvas id="spec" width="256" height="256"></canvas></div>
+  </div>
+
+  <div class="row r2">
+    <div class="card">
+      <span class="tag">z²+c+s·∇</span>
+      <div class="views">
+        <canvas id="mFull" width="300" height="300"></canvas>
+        <canvas id="mDive" width="300" height="300"></canvas>
+      </div>
+      <div class="ctl">s <input type="range" id="s" min="0" max="1" step="0.01" value="0">
+        <span class="num" id="sVal">0.00</span><button id="auto" title="s = T">⟲ T</button></div>
+    </div>
+    <div class="card" style="display:flex;flex-direction:column;gap:12px;padding:14px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:1.1rem">T</span>
+        <div class="meter" style="flex:1"><i id="tBar"></i><b></b></div>
+        <span class="num" id="tVal">0.00</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:1.1rem">Δ</span>
+        <div class="meter" style="flex:1"><i id="dBar" style="background:var(--hit)"></i></div>
+        <span class="num" id="dVal">0.0%</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px">
+        <div class="gate"><div class="chip z" id="g0">0</div><div class="chip o" id="g1">1</div></div>
+        <div class="big" id="final">$0.00</div>
+      </div>
+      <div class="money">
+        <div class="bar" id="barNow"><span class="a" id="bA"></span><span class="c" id="bC"></span></div>
+        <div class="bar ghost" id="barIf"><span class="a" id="iA"></span><span class="n" id="iN"></span><span class="c" id="iC"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="tiny">
+    🖼 <span id="caption">A Recent Entrance to Paradise · DABUS (Stephen Thaler) · public domain · Wikimedia Commons · Thaler v. Perlmutter</span> ·
+    ∇ high-pass residual of the center 256×256 crop · 𝓕 log spectrum, lattice at N/8 marked ·
+    T = mean peak excess over the lattice (uncalibrated; tick at 0.5) · Δ = share of escape counts the picture moves across Full + Dive ·
+    gate 0 when T ≥ 0.5 · gross $546.67 → artist 80% <span style="color:var(--gold)">■</span> company 20% <span style="color:var(--co)">■</span>, noise <span style="color:var(--hit)">■</span> = 40% of gross × Δ ·
+    method after <a href="https://github.com/RUB-SysSec/GANDCTAnalysis" target="_blank" rel="noopener">GANDCTAnalysis</a> and
+    <a href="https://github.com/PeterWang512/CNNDetection" target="_blank" rel="noopener">CNNDetection</a> · Paper simulation, nothing paid.
+  </p>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var GROSS = 1640 / 3, COMPANY = 0.20, PREMIUM_CAP = 0.40, MAXITER = 256, N = 256, THRESH = 0.5;
+  var SRC_URL = "https://upload.wikimedia.org/wikipedia/commons/2/2f/A_Recent_Entrance_to_Paradise.jpg";
+  function $(id) { return document.getElementById(id); }
+  function usd(n) { return "$" + n.toFixed(2); }
+
+  /* ---------- FFT (iterative radix-2, in place) ---------- */
+  function fft1(re, im, n, inv) {
+    for (var i = 1, j = 0; i < n; i++) {
+      var bit = n >> 1;
+      for (; j & bit; bit >>= 1) j ^= bit;
+      j ^= bit;
+      if (i < j) { var t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; }
+    }
+    for (var len = 2; len <= n; len <<= 1) {
+      var ang = 2 * Math.PI / len * (inv ? 1 : -1), wr = Math.cos(ang), wi = Math.sin(ang);
+      for (var k = 0; k < n; k += len) {
+        var cr = 1, ci = 0;
+        for (var m = 0; m < len / 2; m++) {
+          var a = k + m, b = a + len / 2;
+          var xr = re[b] * cr - im[b] * ci, xi = re[b] * ci + im[b] * cr;
+          re[b] = re[a] - xr; im[b] = im[a] - xi; re[a] += xr; im[a] += xi;
+          var ncr = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = ncr;
+        }
+      }
+    }
+  }
+  function fft2(re, im) {
+    var rr = new Float64Array(N), ri = new Float64Array(N), x, y;
+    for (y = 0; y < N; y++) {
+      for (x = 0; x < N; x++) { rr[x] = re[y * N + x]; ri[x] = im[y * N + x]; }
+      fft1(rr, ri, N, false);
+      for (x = 0; x < N; x++) { re[y * N + x] = rr[x]; im[y * N + x] = ri[x]; }
+    }
+    for (x = 0; x < N; x++) {
+      for (y = 0; y < N; y++) { rr[y] = re[y * N + x]; ri[y] = im[y * N + x]; }
+      fft1(rr, ri, N, false);
+      for (y = 0; y < N; y++) { re[y * N + x] = rr[y]; im[y * N + x] = ri[y]; }
+    }
+  }
+
+  /* ---------- picture -> residual -> spectrum -> T ---------- */
+  var residual = null; // Float32Array N*N, normalized to unit std, clipped to +-3
+  var T = 0;
+
+  function analyze(img) {
+    var sc = $("src"), sctx = sc.getContext("2d");
+    var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+    var k = Math.min(sc.width / w, sc.height / h);
+    sctx.fillStyle = "#05070a"; sctx.fillRect(0, 0, sc.width, sc.height);
+    var dw = w * k, dh = h * k, dx = (sc.width - dw) / 2, dy = (sc.height - dh) / 2;
+    sctx.drawImage(img, dx, dy, dw, dh);
+
+    // native-resolution center crop (no resampling, so upsampling artifacts survive); upscale only if smaller than N
+    var cc = document.createElement("canvas"); cc.width = N; cc.height = N;
+    var cctx = cc.getContext("2d");
+    var side = Math.min(w, h, N), cx0 = (w - side) / 2, cy0 = (h - side) / 2;
+    cctx.drawImage(img, cx0, cy0, side, side, 0, 0, N, N);
+    var px;
+    try { px = cctx.getImageData(0, 0, N, N).data; }
+    catch (e) { showDrop(); return; }
+
+    // crop box on the source view
+    sctx.strokeStyle = "#e0a63a"; sctx.lineWidth = 2;
+    sctx.strokeRect(dx + cx0 * k, dy + cy0 * k, side * k, side * k);
+
+    var Y = new Float32Array(N * N), i, x, y;
+    for (i = 0; i < N * N; i++) Y[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
+
+    // high-pass residual: luma minus 3x3 box mean
+    var R = new Float32Array(N * N), mean = 0, sd = 0;
+    for (y = 0; y < N; y++) for (x = 0; x < N; x++) {
+      var s = 0, c = 0;
+      for (var dy2 = -1; dy2 <= 1; dy2++) for (var dx2 = -1; dx2 <= 1; dx2++) {
+        var xx = x + dx2, yy = y + dy2;
+        if (xx >= 0 && yy >= 0 && xx < N && yy < N) { s += Y[yy * N + xx]; c++; }
+      }
+      R[y * N + x] = Y[y * N + x] - s / c; mean += R[y * N + x];
+    }
+    mean /= N * N;
+    for (i = 0; i < N * N; i++) { R[i] -= mean; sd += R[i] * R[i]; }
+    sd = Math.sqrt(sd / (N * N)) || 1;
+    for (i = 0; i < N * N; i++) R[i] = Math.max(-3, Math.min(3, R[i] / sd));
+    residual = R;
+
+    // residual view: diverging, cyan negative / magenta positive
+    var rc = $("res"), rctx = rc.getContext("2d"), rim = rctx.createImageData(N, N), rd = rim.data;
+    for (i = 0; i < N * N; i++) {
+      var v = R[i] / 3, o = i * 4;
+      if (v >= 0) { rd[o] = 10 + 245 * v; rd[o + 1] = 12 + 67 * v; rd[o + 2] = 17 + 199 * v; }
+      else { v = -v; rd[o] = 10 + 74 * v; rd[o + 1] = 12 + 202 * v; rd[o + 2] = 17 + 181 * v; }
+      rd[o + 3] = 255;
+    }
+    rctx.putImageData(rim, 0, 0);
+
+    // spectrum with Hann window
+    var re = new Float64Array(N * N), im = new Float64Array(N * N);
+    for (y = 0; y < N; y++) for (x = 0; x < N; x++) {
+      var wwin = (0.5 - 0.5 * Math.cos(2 * Math.PI * x / (N - 1))) * (0.5 - 0.5 * Math.cos(2 * Math.PI * y / (N - 1)));
+      re[y * N + x] = R[y * N + x] * wwin;
+    }
+    fft2(re, im);
+    var L = new Float32Array(N * N), lo = Infinity, hi = -Infinity;
+    for (y = 0; y < N; y++) for (x = 0; x < N; x++) {
+      var sx = (x + N / 2) % N, sy = (y + N / 2) % N; // fftshift
+      var mag = Math.log(1 + Math.hypot(re[y * N + x], im[y * N + x]));
+      L[sy * N + sx] = mag; if (mag < lo) lo = mag; if (mag > hi) hi = mag;
+    }
+
+    // T: peak excess on the N/8 lattice versus a ring around each lattice point
+    var step = N / 8, ex = 0, cnt = 0, lx, ly;
+    for (ly = 0; ly < N; ly += step) for (lx = 0; lx < N; lx += step) {
+      var px0 = lx, py0 = ly;
+      if (px0 === N / 2 && py0 === N / 2) continue; // DC
+      var peak = 0, pc = 0, ring = 0, rcn = 0;
+      for (var oy = -6; oy <= 6; oy++) for (var ox = -6; ox <= 6; ox++) {
+        var qx = px0 + ox, qy = py0 + oy;
+        if (qx < 0 || qy < 0 || qx >= N || qy >= N) continue;
+        var dd = Math.max(Math.abs(ox), Math.abs(oy));
+        if (dd <= 1) { peak += L[qy * N + qx]; pc++; }
+        else if (dd >= 3) { ring += L[qy * N + qx]; rcn++; }
+      }
+      if (pc && rcn) { ex += peak / pc - ring / rcn; cnt++; }
+    }
+    var excess = cnt ? ex / cnt : 0;
+    T = Math.max(0, Math.min(1, excess / 0.8));
+
+    var spc = $("spec"), spctx = spc.getContext("2d"), sim = spctx.createImageData(N, N), sdd = sim.data;
+    for (i = 0; i < N * N; i++) {
+      var t = (L[i] - lo) / (hi - lo || 1); t = Math.pow(t, 1.6);
+      var o2 = i * 4;
+      sdd[o2] = 20 + 220 * t; sdd[o2 + 1] = 18 + 200 * t; sdd[o2 + 2] = 40 + 200 * t * t; sdd[o2 + 3] = 255;
+    }
+    spctx.putImageData(sim, 0, 0);
+    spctx.strokeStyle = "rgba(255,79,216,.85)"; spctx.lineWidth = 1;
+    for (ly = 0; ly < N; ly += step) for (lx = 0; lx < N; lx += step) {
+      if (lx === N / 2 && ly === N / 2) continue;
+      spctx.beginPath(); spctx.arc(lx + .5, ly + .5, 3.5, 0, Math.PI * 2); spctx.stroke();
+    }
+
+    $("tVal").textContent = T.toFixed(2);
+    $("tBar").style.width = (T * 100).toFixed(1) + "%";
+    setS(T);
+    startRuns();
+  }
+
+  /* ---------- Mandelbrot step, pure vs perturbed by the residual ---------- */
+  var LUT = [];
+  (function () {
+    var v = [0xb9, 0x8c, 0xff], c = [0x54, 0xd6, 0xc6], w = [0xf4, 0xf2, 0xea], d = [0x16, 0x12, 0x2a];
+    for (var i = 0; i < MAXITER; i++) {
+      var t = Math.log(i + 1) / Math.log(MAXITER), a, b, f;
+      if (t < 0.25) { a = d; b = v; f = t / 0.25; } else if (t < 0.7) { a = v; b = c; f = (t - 0.25) / 0.45; } else { a = c; b = w; f = (t - 0.7) / 0.3; }
+      LUT.push([Math.round(a[0] + (b[0] - a[0]) * f), Math.round(a[1] + (b[1] - a[1]) * f), Math.round(a[2] + (b[2] - a[2]) * f)]);
+    }
+  })();
+  var GOLD = [0xe0, 0xa6, 0x3a], HIT = [0xff, 0x4f, 0xd8];
+
+  function escape(x0, y0) {
+    var x = 0, y = 0, x2 = 0, y2 = 0, it = 0;
+    while (x2 + y2 <= 4 && it < MAXITER) { y = 2 * x * y + y0; x = x2 - y2 + x0; x2 = x * x; y2 = y * y; it++; }
+    return it;
+  }
+
+  function Run(canvasId, view) {
+    var cv = $(canvasId), ctx = cv.getContext("2d"), W = cv.width, H = cv.height;
+    var img = ctx.createImageData(W, H), d = img.data, st = null;
+    this.total = W * H;
+    this.start = function (s) {
+      st = { row: 0, changed: 0, s: s, minRe: view.cx - view.scale, minIm: view.cy - view.scale, step: 2 * view.scale / W,
+             amp: 0.03 * view.scale };
+    };
+    this.changed = function () { return st ? st.changed : 0; };
+    this.done = function () { return !st || st.row >= H; };
+    this.tick = function (budget) {
+      if (this.done()) return;
+      var t0 = performance.now(), start = st.row;
+      while (st.row < H && performance.now() - t0 < budget) {
+        var py = st.row, y0 = st.minIm + py * st.step, o = py * W * 4;
+        var ry = Math.min(N - 1, Math.floor(py * N / H));
+        for (var px = 0; px < W; px++) {
+          var x0 = st.minRe + px * st.step;
+          var pure = escape(x0, y0), it = pure;
+          if (residual && st.s > 0) {
+            var r = residual[ry * N + Math.min(N - 1, Math.floor(px * N / W))] * st.amp * st.s;
+            it = escape(x0 + r, y0 + r);
+          }
+          var col;
+          if (it !== pure) { col = HIT; st.changed++; }
+          else col = it >= MAXITER ? GOLD : LUT[it];
+          d[o] = col[0]; d[o + 1] = col[1]; d[o + 2] = col[2]; d[o + 3] = 255; o += 4;
+        }
+        st.row++;
+      }
+      ctx.putImageData(img, 0, 0, 0, start, W, st.row - start);
+    };
+  }
+
+  var full = new Run("mFull", { cx: -0.6, cy: 0, scale: 1.45 });
+  var dive = new Run("mDive", { cx: -0.745, cy: 0.1125, scale: 0.016 });
+  var raf = 0, sCur = 0;
+
+  function startRuns() {
+    full.start(sCur); dive.start(sCur);
+    if (!raf) raf = requestAnimationFrame(loop);
+  }
+  function loop() {
+    raf = 0;
+    full.tick(7); dive.tick(7);
+    price();
+    if (!full.done() || !dive.done()) raf = requestAnimationFrame(loop);
+  }
+
+  function price() {
+    var D = (full.changed() + dive.changed()) / (full.total + dive.total);
+    $("dVal").textContent = (D * 100).toFixed(1) + "%";
+    $("dBar").style.width = Math.min(100, D * 100 * 4) + "%";
+    var gate = T >= THRESH ? 0 : 1;
+    $("g0").classList.toggle("on", gate === 0);
+    $("g1").classList.toggle("on", gate === 1);
+    var noise = GROSS * PREMIUM_CAP * Math.min(1, D);
+    var human = GROSS + noise, fin = gate * human;
+    var f = $("final"); f.textContent = usd(fin); f.className = "big " + (gate ? "pos" : "zero");
+    var maxV = GROSS * (1 + PREMIUM_CAP);
+    // actual
+    $("bA").style.flex = String(fin * (1 - COMPANY) / maxV); $("bA").textContent = fin ? usd(fin * (1 - COMPANY)) : "";
+    $("bC").style.flex = String(fin * COMPANY / maxV); $("bC").textContent = fin ? usd(fin * COMPANY) : "";
+    $("barNow").style.width = Math.max(0, fin / maxV * 100) + "%";
+    $("barNow").style.minWidth = fin ? "0" : "26px";
+    // if human
+    $("iA").style.flex = String(GROSS * (1 - COMPANY)); $("iA").textContent = usd(GROSS * (1 - COMPANY));
+    $("iN").style.flex = String(noise); $("iN").textContent = noise > 60 ? usd(noise) : "";
+    $("iC").style.flex = String(human * COMPANY); $("iC").textContent = usd(human * COMPANY);
+    $("barIf").style.width = (human / maxV * 100) + "%";
+  }
+
+  function setS(v) { sCur = v; $("s").value = v; $("sVal").textContent = (+v).toFixed(2); }
+  $("s").addEventListener("input", function () { setS(+this.value); });
+  $("s").addEventListener("change", startRuns);
+  $("auto").addEventListener("click", function () { setS(T); startRuns(); });
+
+  /* ---------- image intake ---------- */
+  function showDrop() { $("drop").classList.add("on"); }
+  function loadURL(url, caption) {
+    var img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = function () { $("drop").classList.remove("on"); if (caption) $("caption").textContent = caption; analyze(img); };
+    img.onerror = showDrop;
+    img.src = url;
+  }
+  function loadFile(f) {
+    if (!f || !/^image\//.test(f.type)) return;
+    var r = new FileReader();
+    r.onload = function () { loadURL(r.result, f.name); };
+    r.readAsDataURL(f);
+  }
+  var srcCard = $("srcCard");
+  srcCard.addEventListener("click", function () { $("file").click(); });
+  $("file").addEventListener("change", function () { loadFile(this.files[0]); });
+  ["dragenter", "dragover"].forEach(function (e) { srcCard.addEventListener(e, function (ev) { ev.preventDefault(); $("drop").classList.add("on", "hover"); }); });
+  ["dragleave", "drop"].forEach(function (e) { srcCard.addEventListener(e, function (ev) { ev.preventDefault(); $("drop").classList.remove("hover"); }); });
+  srcCard.addEventListener("drop", function (ev) { if (ev.dataTransfer.files[0]) loadFile(ev.dataTransfer.files[0]); });
+  window.addEventListener("paste", function (ev) {
+    var items = ev.clipboardData && ev.clipboardData.items; if (!items) return;
+    for (var i = 0; i < items.length; i++) if (items[i].kind === "file") { loadFile(items[i].getAsFile()); break; }
+  });
+  window.__tellProbeLoad = loadURL; // test hook
+
+  price();
+  startRuns();       // pure set while the picture loads
+  loadURL(SRC_URL);
+})();
+</script>
+</body>
+</html>
