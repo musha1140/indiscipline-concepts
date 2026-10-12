@@ -1,0 +1,10 @@
+column,type,state,source,read_on,note
+registration_year_one_usd,currency,answered,Vercel registrar availability check,2026-10-11,Per name as checked; indiscipline.com and indiscipline.music were taken
+renewal_usd,currency,answered,Vercel registrar availability check,2026-10-11,Renewal price shown beside the first-year price
+whois_privacy_usd,currency,answered,porkbun.com/tld/com ("Free WHOIS privacy ... at no extra charge, always"),2026-10-12,Applies when registered at Porkbun; privacy pricing at the Vercel registrar was not checked (needs_review)
+dns_per_month_usd,currency,needs_review,Gas-Lighting LLC scope note (10 GB bandwidth a month estimate),2026-10-12,Estimate not a published plan price; metered and rises with traffic
+ssl_usd,currency,answered,Vercel Pro plan and Cloudflare plan terms (certificate included),2026-10-12,Already counted inside the hosting line
+email_three_mailboxes_per_month_usd,currency,answered,porkbun.com/products/email ("Porkbun Email $3.00 / month" per mailbox),2026-10-12,Three mailboxes is the usual default from the scope note
+total_per_month_with_m365_usd,currency,answered,microsoft.com Microsoft 365 Business Basic $7.00 user/month paid yearly (price effective 2026-07-01),2026-10-12,Three users; $5.40 without Teams
+porkbun_com_registration,currency,answered,porkbun.com/tld/com ($11.08),2026-10-12,Alternative registrar for a .com; not used in the totals because the names were checked at the Vercel registrar
+godaddy,currency,not_present,none,,Not checked; not quoted

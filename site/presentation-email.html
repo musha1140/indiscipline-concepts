@@ -62,11 +62,12 @@ dd{margin:0}
 .flow .sym{font:600 18px/1.4 ui-monospace,Menlo,Consolas,monospace;color:#f34b42;text-align:center}
 @media(max-width:860px){.split{grid-template-columns:1fr}.presentation-header{flex-wrap:wrap}.presentation-header nav{gap:16px}dl{grid-template-columns:1fr}dt{white-space:normal}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+@media print{body{background:#fff;color:#000}.presentation-note,.presentation-header,.presentation-footer,.actions,section:not(#agreement),#agreement .split>div:first-child{display:none}#contract{border:0;background:#fff;color:#000;padding:0}#contract .small,#contract dt{color:#333}}
 </style>
 </head>
 <body>
 <div class="presentation-note">INDISCIPLINE / THE SITE, THE PRICES, THE ART · <a href="presentation.html">Discipline<svg class="ic-arrow" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10"/></svg></a> · <a href="editor-preview.html">Band dashboard<svg class="ic-arrow" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10"/></svg></a></div>
-<header class="presentation-header"><a class="presentation-brand" href="#site">INDISCIPLINE<span class="accent">.</span></a><nav><a href="#site">The site</a><a href="#prices">Build</a><a href="#ongoing">Ongoing</a><a href="#poster">Poster</a><a href="#art">The art</a><a href="#probe">The tests</a></nav></header>
+<header class="presentation-header"><a class="presentation-brand" href="#site">INDISCIPLINE<span class="accent">.</span></a><nav><a href="#site">The site</a><a href="#prices">Build</a><a href="#ongoing">Ongoing</a><a href="#poster">Poster</a><a href="#art">The art</a><a href="#probe">The tests</a><a href="#variance">Oct 3 to now</a><a href="#agreement">Agreement</a></nav></header>
 
 <main class="presentation-main">
 
@@ -232,6 +233,23 @@ dd{margin:0}
         </tbody>
       </table>
       <p class="small" style="margin-top:10px">A .com with three Porkbun mailboxes: $239.25 in year one ($11.25 + $120.00 + $108.00), the same every year after. With three Microsoft 365 Business Basic users instead: $383.25 a year. Email is the largest line on every name; drop it to forwarding and each name is $10.94 a month.</p>
+      <h3 style="margin-top:22px">Where every column comes from</h3>
+      <p class="small">Each figure above is a lead with a source, not a promise. Columns marked needs review are estimates or were not checked at the registrar in the table.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Column</th><th>State</th><th>Source</th><th class="num">Read on</th></tr></thead>
+          <tbody>
+            <tr><td>Registration, year one and renewal</td><td>answered</td><td>Vercel registrar availability check, per name</td><td class="num">Oct 11, 2026</td></tr>
+            <tr><td>WHOIS privacy</td><td>answered at Porkbun, needs review elsewhere</td><td>porkbun.com, .com page: "Free WHOIS privacy, at no extra charge, always". Not checked at the Vercel registrar.</td><td class="num">Oct 12, 2026</td></tr>
+            <tr><td>DNS</td><td>needs review</td><td>Scope note estimate for 10 GB a month; metered, not a published plan price</td><td class="num">Oct 12, 2026</td></tr>
+            <tr><td>SSL</td><td>answered</td><td>Certificate included in the Vercel Pro and Cloudflare plans already counted</td><td class="num">Oct 12, 2026</td></tr>
+            <tr><td>Email, Porkbun</td><td>answered</td><td>porkbun.com email hosting page: $3.00 a month per mailbox</td><td class="num">Oct 12, 2026</td></tr>
+            <tr><td>Email, Microsoft 365</td><td>answered</td><td>microsoft.com: Business Basic $7.00 a user a month paid yearly, effective July 1, 2026; $5.40 without Teams</td><td class="num">Oct 12, 2026</td></tr>
+            <tr><td>GoDaddy</td><td>not present</td><td>Not checked, not quoted</td><td class="num"></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="actions"><a class="button ghost" href="assets/domains.csv" download>Download the grid (CSV)</a><a class="button ghost" href="assets/domains_sources.csv" download>Download the sources (CSV)</a></div>
     </div>
   </div>
 </section>
@@ -280,7 +298,7 @@ dd{margin:0}
         <dt>N, amount</dt><dd>How many placements the band takes: one site placement is 1; each additional placement (a flyer, a post, a thumbnail) adds its own count at the small-use rate.</dd>
         <dt>Labor, separate</dt><dd>A commissioned new piece is the artist's time at her hourly rate, agreed with her before art hours begin, and billed apart from the index. The index prices the use of a finished piece; it never prices her hours.</dd>
       </dl>
-      <p class="small" style="margin-top:12px">No example rates are shown here on purpose. A rate exists only once a piece is named, its size-to-depth ratio is measured against her reference piece, the term is set and the placements are counted. Then it is one multiplication from the $400 base, and the row freezes. The attestation gate applies to every row. Everything here reads Proposed until the artist accepts it.</p>
+      <p class="small" style="margin-top:12px">The band is never quoted the formula. The formula is how Gas-Lighting LLC and the artist arrive at a number; the band is quoted one fixed price per use (a site license for a year, a show commission, a small use), in writing, before the piece is placed, and that figure freezes on the row. No example rates are shown here on purpose: a rate exists only once a piece is named, its size-to-depth ratio is measured against her reference piece, the term is set and the placements are counted. The attestation gate applies to every row. Everything here reads Proposed until the artist accepts it.</p>
       
     </div>
   </div>
@@ -328,6 +346,69 @@ dd{margin:0}
   </div>
 </section>
 
+<section id="variance">
+  <h2>From the October 3 estimate to now</h2>
+  <div class="split">
+    <div>
+      <p class="lead">The October 3 estimate said 12 to 15.5 hours, $450.00 to $581.25 at $37.50. The table today is 15h 41m, $588.20. Here is the bridge, line by line, and why each line moved.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Line</th><th class="num">Oct 3 estimate</th><th class="num">Today</th><th class="num">Change</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>Build the site, dashboard setup, refine the chosen concept, test on three devices</td><td class="num">8h to 10h</td><td class="num">10h 11m</td><td class="num">+0h 11m over the top</td><td>Three concepts were built instead of one, plus the editor preview. The signed 7h 11m is the build; refine (2h) and testing (1h) are what finishing one concept takes.</td></tr>
+            <tr><td>Move over content: bios, photos, embeds, show and ticket links</td><td class="num">2h to 3h</td><td class="num">3h 30m</td><td class="num">+0h 30m over the top</td><td>Split into three checkable rows (links 1h, content 1h 30m, photos and QR 1h) so each one is signed on its own.</td></tr>
+            <tr><td>Handover and launch: editor access, guide, walkthrough, domain, SSL</td><td class="num">2h to 2h 30m</td><td class="num">2h</td><td class="num">within range</td><td>Unchanged in substance; the domain step moved into the per-name costing above.</td></tr>
+            <tr class="total"><td>Total</td><td class="num">12h to 15h 30m</td><td class="num">15h 41m</td><td class="num">+0h 11m, +$6.95 (+1.2%) over the top; +3h 41m, +$138.20 (+30.7%) over the bottom</td><td>The estimate held at its top end. The October 3 promise to check in before passing 15.5 hours stands: the band is told before any row runs past its estimate.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <h3>What October 3 said that is no longer true</h3>
+      <dl>
+        <dt>Hosting: "no charge to the band"</dt><dd>Withdrawn. Hosting is $20 a month on the band's own Vercel account, inside the $34.94 a month required set. A site the band owns cannot run on my account for free.</dd>
+        <dt>Dashboard: "Sanity's free plan"</dt><dd>Kept, with its limits stated: $0 covers an administrator; an editor role or scheduled publishing is $15 a seat a month.</dd>
+        <dt>Upkeep: "$10 a month, or $100 for the year"</dt><dd>Withdrawn. Security updates, monitoring, backups and link checks are labor at $37.50 an hour as worked. A flat $10 was a number without hours behind it.</dd>
+        <dt>Domain: "about $10 to $14 a year"</dt><dd>Widened to the per-name table above: $3.99 to $29.99 in year one, $11.25 to $39.91 at renewal, plus privacy, DNS and email costed in full.</dd>
+        <dt>Deposit: "$225 at approval, the rest at launch"</dt><dd>Replaced. Nothing fixed; billed as worked against signed sessions.</dd>
+      </dl>
+      <h3 style="margin-top:14px">Ongoing, against the band's current bill</h3>
+      <p class="small">Bandzoogle today: $11.00, $17.00 or $22.00 a month. The required set on the band's own accounts: $34.94 a month. That is $12.94 to $23.94 a month more, +59% to +218%, and the reason is ownership: four separate accounts in the band's name instead of one bundled plan on someone else's platform. Email and a domain add $9.94 to $21.94 a month more on top, per the table above.</p>
+    </div>
+  </div>
+</section>
+
+<section id="agreement">
+  <h2>Agreement</h2>
+  <div class="split">
+    <div>
+      <p class="lead">One page, the terms exactly as they appear above, for the band to print, sign and send back. Nothing in it is not already on this page.</p>
+      <p class="small">This is a plain-language agreement between a small company and a band, not legal advice. Either side may have a lawyer read it first; the terms do not change by being read.</p>
+      <div class="actions"><button class="button" onclick="window.print()">Print or save as PDF</button></div>
+    </div>
+    <div class="card" id="contract">
+      <h3>Website build agreement</h3>
+      <p class="small">Between Gas-Lighting LLC, Chicago ("GSL") and Indiscipline ("the band"). Dated the day both sign below.</p>
+      <ol>
+        <li><b>The work.</b> GSL builds the Indiscipline website from the concept the band picks (Discipline, The Court or Red), with the editing dashboard, as described in the table under "Website build and launch".</li>
+        <li><b>Price.</b> $37.50 an hour, being $50 an hour less 25%, billed for the hours actually worked and recorded in signed work sessions. The table is the estimate (15h 41m, $588.20). GSL tells the band before any row runs past its estimate. The first row (7h 11m, $269.45) is done, signed and billed.</li>
+        <li><b>Outside the table.</b> Changes asked for by email, meetings, the project setup work of October 3 to 11 once timed, upkeep after launch, and content help are billed at the same rate as worked.</li>
+        <li><b>Third-party services.</b> Hosting, code repository, DNS, media storage, the dashboard, the domain and any email are on accounts in the band's name, paid by the band to those companies at their published prices. GSL adds no markup and takes no margin on them. Estimated at $34.94 a month for the required set at prices read on October 12, 2026; those prices are the companies' own and change without notice.</li>
+        <li><b>Ownership.</b> The band owns the result outright: the design, the code, the content and the domain, registered in the band's name.</li>
+        <li><b>Art.</b> Art for the site is made by a named human artist, credited, with no generative AI in delivered art or imagery. Art is priced apart from this agreement: each use is quoted to the band as one fixed price, in writing, before the piece is placed, and no art hours begin before that figure is agreed.</li>
+        <li><b>The poster.</b> The October 16 show poster is provided at $0 and the band may reproduce it freely.</li>
+        <li><b>Pace.</b> No launch date is fixed by this agreement. The band's current site stays up as long as the band wants it.</li>
+        <li><b>Ending it.</b> Either side may end this agreement in writing at any time. The band pays for hours worked up to that point and keeps everything built so far.</li>
+        <li><b>Payment.</b> Invoices are issued from signed sessions and are due within 14 days.</li>
+      </ol>
+      <dl style="margin-top:14px">
+        <dt>For the band</dt><dd>Name: ______________________ Signature: ______________________ Date: __________</dd>
+        <dt>For Gas-Lighting LLC</dt><dd>Name: ______________________ Signature: ______________________ Date: __________</dd>
+      </dl>
+    </div>
+  </div>
+</section>
+
 <section>
   <h2>What comes next</h2>
   <p>Pick the concept, pick the name, and the next row starts. Since the band is looking into marketing: when you are ready, we would set up the pieces that keep going after launch, the dashboard and content pipeline, the artist arrangement, and the marketing work itself, rather than a one-time handoff. Either answer is fine; it decides what we build, not what the site costs you.</p>
@@ -335,6 +416,6 @@ dd{margin:0}
 </section>
 
 </main>
-<footer class="presentation-footer">INDISCIPLINE / A CHICAGO TRIBUTE TO KING CRIMSON<br>The build billed as worked, the third-party costs and the art arrangement as proposed by Gas-Lighting LLC, October 2026. Build hours from signed work sessions. Third-party prices are those companies' own and change without notice. Art figures are paper simulations; nothing has been paid. The probe's threshold is uncalibrated; one generator against one piece.</footer>
+<footer class="presentation-footer">INDISCIPLINE / A CHICAGO TRIBUTE TO KING CRIMSON<br>The build billed as worked, the third-party costs, the art arrangement and the agreement as proposed by Gas-Lighting LLC, October 2026. Build hours from signed work sessions. Third-party prices are those companies' own and change without notice. Art figures are paper simulations; nothing has been paid. The probe's threshold is uncalibrated; one generator against one piece.</footer>
 </body>
 </html>
