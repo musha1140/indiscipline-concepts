@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Indiscipline / The Floor / How we work together</title>
+<meta name="description" content="How Indiscipline signs in to the Floor, what it sees there, and how the same way of working carries into the band's Sanity dashboard.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* The Floor's own tokens (floor-service/src/ui.js, dark theme), which are also this site's palette. */
+:root{--bg:#111110;--panel:#1a1a18;--panel2:#22221f;--hover:#2a2a26;--text:#f1ede3;--muted:#b5b1a8;--faint:#7d7a73;--line:#383834;--accent:#f34b42;--accent-ink:#111110;--ok:#6fbf73;--warn:#e0a84a;--info:#7fb0d8;--shadow:0 18px 48px rgba(0,0,0,.45);color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 "DM Sans",system-ui,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.display{font-family:"Barlow Condensed","Arial Narrow",Impact,sans-serif;letter-spacing:-.01em}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+.presentation-note{max-width:1080px;margin:auto;padding:14px 16px;font:11px/1.6 "JetBrains Mono",ui-monospace,monospace;color:var(--muted)}
+.presentation-note a{text-decoration:none}
+.presentation-note a:hover{color:var(--text)}
+.ic-arrow{width:.85em;height:.85em;margin-left:.2em;vertical-align:-.05em;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.wrap{max-width:1080px;margin:0 auto;padding:0 16px}
+header.floor{border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:5}
+.bar{display:flex;align-items:center;gap:14px;padding:12px 0;flex-wrap:wrap}
+.brand{font-size:26px;line-height:1;font-weight:800}
+.brand span{color:var(--accent)}
+.bar .grow{flex:1;min-width:0}
+.bar .sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill{font:700 11px/1 "JetBrains Mono",monospace;letter-spacing:.6px;text-transform:uppercase;border-radius:999px;padding:6px 10px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.pill.open{color:var(--ok);border-color:var(--ok)}.pill.draft{color:var(--warn);border-color:var(--warn)}
+.who{font-size:12px;color:var(--muted);text-align:right}
+.who a{color:var(--info);font-weight:600;text-decoration:none}
+main.floor{display:grid;gap:18px;padding:18px 16px 40px}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;min-width:0}
+.card h2{margin:0 0 4px;font-size:24px;text-wrap:balance}
+.card p.sub{margin:0 0 12px;color:var(--muted);font-size:13px}
+.card p{margin:0 0 10px}
+.card p:last-child{margin-bottom:0}
+.card.hero{border-color:var(--accent)}
+.card ol,.card ul{margin:0 0 10px;padding-left:20px}
+.card li{margin:0 0 6px}
+.seat{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.seat:first-of-type{border-top:0}
+.avatar{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font:700 12px/1 "DM Sans",sans-serif;color:#fff;flex:none}
+.seat .who-s{min-width:0}
+.seat .who-s b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.seat .who-s small{color:var(--muted);font-size:12px;display:block;overflow-wrap:anywhere}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.tag{font:600 10.5px/1 "JetBrains Mono",monospace;letter-spacing:.5px;text-transform:uppercase;border:1px solid var(--line);border-radius:6px;padding:4px 6px;color:var(--muted)}
+.tag.ok{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 45%,var(--line))}
+.tag.warn{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,var(--line))}
+.tag.info{color:var(--info);border-color:color-mix(in srgb,var(--info) 45%,var(--line))}
+.tag.bad{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:9px;padding:8px 14px;font-weight:700;text-decoration:none;display:inline-block;font:inherit;font-weight:700;cursor:pointer}
+.btn.ghost{background:var(--panel2);color:var(--text);border:1px solid var(--line);font-weight:600}
+.btn.sm{padding:5px 10px;font-size:13px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.row:first-of-type{border-top:0}
+.row .grow{flex:1;min-width:180px}
+.hint{font-size:12px;color:var(--faint)}
+.verdict{margin-top:12px;padding:12px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);font-size:14px}
+.verdict.ok{border-color:var(--ok)}.verdict.bad{border-color:var(--accent)}.verdict.warn{border-color:var(--warn)}
+dl.terms{display:grid;grid-template-columns:150px minmax(0,1fr);gap:6px 14px;margin:0;font-size:14px}
+dl.terms dt{color:var(--muted);font-weight:600}
+dl.terms dd{margin:0;overflow-wrap:anywhere}
+.record{font:12px/1.6 "JetBrains Mono",monospace;color:var(--muted)}
+.record div{padding:6px 0;border-top:1px dashed var(--line);overflow-wrap:anywhere}
+.record div:first-child{border-top:0}
+.url{font:600 14px/1.6 "JetBrains Mono",monospace;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;overflow-wrap:anywhere;margin:0 0 10px}
+.signin{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:28px;width:min(420px,100%)}
+.signin .brand{font-family:"Barlow Condensed","Arial Narrow",Impact,sans-serif;font-size:30px;line-height:1;font-weight:800;letter-spacing:-.01em}
+.signin h3{font-family:"Barlow Condensed","Arial Narrow",Impact,sans-serif;font-size:26px;margin:14px 0 4px;font-weight:700;letter-spacing:-.01em}
+.signin p.sub{margin:0 0 18px;color:var(--muted);font-size:14px}
+.signin label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin:12px 0 5px}
+.signin .input{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;color:var(--faint)}
+.signin .input.code{letter-spacing:.35em;text-align:center;font-size:20px}
+.signin .button{width:100%;margin-top:14px;background:var(--accent);color:var(--accent-ink);border-radius:9px;padding:11px 14px;font-weight:700;text-align:center}
+.signin .msg{margin:12px 0 0;font-size:14px;color:var(--ok)}
+.signin .hint{margin-top:16px}
+.flow{display:grid;gap:0;margin:0;padding:0;list-style:none;counter-reset:step}
+.flow li{display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;padding:10px 0;border-top:1px solid var(--line);counter-increment:step}
+.flow li:first-child{border-top:0}
+.flow li::before{content:counter(step);width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font:700 12px/1 "JetBrains Mono",monospace;color:var(--text);background:var(--panel2);border:1px solid var(--line)}
+.flow b{display:block}
+.flow small{color:var(--muted);font-size:12px;display:block}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:7px 8px 7px 0;border-top:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:12px}
+thead th{border-top:0}
+td.num,th.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.real td{color:var(--ok)}
+tr.ai td{color:var(--accent)}
+.table-wrap{overflow:auto}
+.presentation-footer{max-width:1080px;margin:auto;padding:30px 16px;border-top:1px solid var(--line);font-size:11px;color:var(--muted)}
+@media (max-width:820px){.grid2{grid-template-columns:minmax(0,1fr)}.seat{grid-template-columns:34px minmax(0,1fr)}dl.terms{grid-template-columns:minmax(0,1fr)}.who{text-align:left}}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<div class="presentation-note">THE FLOOR / HOW WE WORK TOGETHER · <a href="index.html">Discipline</a> / <a href="presentation-paper.html">The Court</a> / <a href="presentation-red.html">Red</a> · <a href="editor-preview.html">Band dashboard<svg class="ic-arrow" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10"/></svg></a></div>
+<header class="floor"><div class="wrap bar">
+  <div><div class="brand display">Fl<span>oor</span></div><div class="sub">Indiscipline · Gas-Lighting LLC</div></div>
+  <div class="grow"></div>
+  <span class="pill draft">not open · draft v1</span>
+  <div class="who">The private working floor, explained for the band</div>
+</div></header>
+
+<main class="floor wrap">
+
+<div class="card hero">
+  <h2 class="display">What the Floor is</h2>
+  <p class="sub">One link, visible only to the people seated on it.</p>
+  <p>Indiscipline's current site is the Bandzoogle page at <a href="https://indisciplinetributeband.us.com/home" rel="noopener noreferrer" target="_blank">indisciplinetributeband.us.com</a>. The remake lives here as three concepts (Discipline, The Court, Red) and a preview of the editing dashboard the band would use to keep the site current. The Floor is the private place where the band and Gas-Lighting LLC seat their people, confirm their own roles, agree the terms, and then talk about that work, instead of long email threads.</p>
+  <p>Each person signs in with a code sent to their own address, sees the seat and role they were given, and confirms it themselves. Once one lead from each side accepts the same version of the terms, the floor opens. Every change, confirmation and acceptance is hashed onto the one before, so nothing can be quietly changed later. The floor itself carries no charge.</p>
+  <div class="verdict warn">As of October 11, 2026 the floor is built and tested (31 floor checks and 19 sign-in checks pass) and is waiting on deployment. The address below is the one it answers at once deployed. Each seated person then gets a short message with the link and their seat.</div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <h2 class="display">Signing in</h2>
+    <p class="sub">No password, no account to create. The seats are the allow-list.</p>
+    <p class="url">https://floor-indiscipline.musha1140.workers.dev/</p>
+    <ol>
+      <li>Open the link and type the email address that holds your seat. Only an address the host lead seated ever receives a code. The floor answers every request with the same message, so an outsider learns nothing.</li>
+      <li>Press <b>Email me a sign-in code</b>. A six-digit code arrives from <span class="mono">floor@gas-lighting.com</span>. It works once and expires in ten minutes.</li>
+      <li>Type the code and press <b>Sign in</b>. You stay signed in on that browser for twelve hours; after that, ask for a new code.</li>
+    </ol>
+    <p class="hint">Limits that protect the band: five codes per address and ten attempts per address in fifteen minutes. If you hit one, wait a quarter of an hour. Nothing on the floor is public and search engines are told not to index it.</p>
+  </div>
+  <div class="card" style="display:grid;place-items:center">
+    <div class="signin" aria-label="What the sign-in page looks like">
+      <div class="brand">Fl<span>oor</span></div>
+      <h3>Indiscipline</h3>
+      <p class="sub">The private working floor with Gas-Lighting LLC. Sign in with the address that holds your seat; a six-digit code is emailed to it.</p>
+      <label>Email</label>
+      <div class="input">you@example.com</div>
+      <label>Six-digit code</label>
+      <div class="input code">••••••</div>
+      <div class="button">Sign in</div>
+      <p class="msg">If that address holds a seat, a code is on its way.</p>
+      <p class="hint">The code works once and expires in ten minutes. Nothing on the floor is public; only seated people can see it.</p>
+    </div>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <h2 class="display">Gas-Lighting LLC</h2>
+    <p class="sub">Our side · 3 seated</p>
+    <div class="seat"><div class="avatar" style="background:#c8322a">SS</div><div class="who-s"><b>Sepas Siddiqui</b><small>Team at Gas-Lighting LLC</small><div class="tags"><span class="tag info">Lead</span><span class="tag ok">signs</span></div></div></div>
+    <div class="seat"><div class="avatar" style="background:#2f6690">JM</div><div class="who-s"><b>Jair Montalvo</b><small>Contractor at Gas-Lighting LLC · runs the Sanity editor</small><div class="tags"><span class="tag">Member</span></div></div></div>
+    <div class="seat"><div class="avatar" style="background:#1f8a7c">LG</div><div class="who-s"><b>Laurel Guido</b><small>Contractor at Gas-Lighting LLC · the artist</small><div class="tags"><span class="tag">Member</span></div></div></div>
+  </div>
+  <div class="card">
+    <h2 class="display">Indiscipline</h2>
+    <p class="sub">Your side · 2 seated</p>
+    <div class="seat"><div class="avatar" style="background:#6b4fa8">EB</div><div class="who-s"><b>Eric Butler</b><small>Client at Indiscipline · band leader</small><div class="tags"><span class="tag info">Lead</span><span class="tag ok">signs</span><span class="tag warn">not yet confirmed</span></div></div></div>
+    <div class="seat"><div class="avatar" style="background:#b0486e">DA</div><div class="who-s"><b>Deepak Ariga</b><small>Client at Indiscipline · band manager</small><div class="tags"><span class="tag">Member</span><span class="tag warn">not yet confirmed</span></div></div></div>
+    <p class="hint" style="margin-top:12px">A seat shows a name, a role on its side, a floor role (lead, member, observer) and whether that person may sign. Only the people seated can see the floor.</p>
+  </div>
+</div>
+
+<div class="card">
+  <h2 class="display">What you see after signing in</h2>
+  <p class="sub">Six cards, top to bottom.</p>
+  <ul>
+    <li><b>Your seat</b>, the card with the red border: your name, side, role and the address you signed in with. If it is right, press <b>Yes, this is me and my role</b>. That is your opt-in. If it is wrong, press <b>Something is wrong</b> and say what; a lead fixes it and you are asked again.</li>
+    <li><b>The two benches</b>, each seat tagged with its role and whether it has confirmed the current version.</li>
+    <li><b>Terms</b>, below. Only leads edit them, and any edit starts a new version that everyone confirms again. The open version stays in force until both leads accept the new one.</li>
+    <li><b>Acceptance</b>: a lead from each side accepts the same version. When both have, the status pill in the header reads <span class="pill open">open · v1</span> and the conversation appears.</li>
+    <li><b>Conversation</b>: everyone seated reads it; leads and members write; a lead's messages are tagged <span class="tag info">speaks for Indiscipline</span> or <span class="tag info">speaks for Gas-Lighting LLC</span>.</li>
+    <li><b>Floor record</b>: every change, confirmation and acceptance, each hashed onto the one before. <b>Proof</b> re-derives the whole chain and compares the open floor to what both leads accepted; <b>Export</b> downloads it.</li>
+  </ul>
+  <div class="record">
+    <div>Oct 11, 2026, 10:30 PM · Sepas Siddiqui seated Eric Butler (lead, client)<br>9f3c1b7a2d4e6f80</div>
+    <div>Oct 11, 2026, 10:31 PM · Sepas Siddiqui changed the terms<br>4b8e2a9c0d1f3e5a</div>
+    <div>Oct 11, 2026, 10:31 PM · version 1 started<br>c2d4e6f8a0b1c3d5</div>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <h2 class="display">Terms</h2>
+    <p class="sub">How the two teams work together, as proposed by Gas-Lighting LLC for version 1.</p>
+    <dl class="terms">
+      <dt>Reply within</dt><dd>24 business hours</dd>
+      <dt>Working hours</dt><dd>Weekdays 10:00 to 18:00 (America/Chicago)</dd>
+      <dt>Decisions</dt><dd>Both leads must agree</dd>
+      <dt>Escalation</dt><dd>Lead to lead in writing; a call within one business day if it stays unresolved</dd>
+      <dt>Art standard</dt><dd>Delivered art is made by a named human artist, Laurel Guido. No generative AI in delivered art or imagery. Style and details are agreed on this floor with the artist before art hours begin.</dd>
+      <dt>Pricing</dt><dd>The floor itself carries no charge. Build and dashboard work: the October 3, 2026 estimate, at $50 an hour less 25% ($37.50), including the Sanity dashboard operations by Jair Montalvo. Art: scoped and priced with the artist on this floor before any art hours are billed.</dd>
+      <dt>Scope</dt><dd>The new Indiscipline website replacing the Bandzoogle page, the band's editing dashboard (Sanity), and the art for both. Shows, tickets, photos, links and media as described in the October 3 estimate.</dd>
+    </dl>
+  </div>
+  <div class="card">
+    <h2 class="display">How we work with you</h2>
+    <p class="sub">What the terms mean in practice.</p>
+    <ul>
+      <li><b>Billed for time, openly.</b> Hours actually worked, at the October 3 rate, entered from signed work sessions only. Changes asked for by email are time and are billed the same way; meetings are valued at the same rate. The build table is the open record of that time.</li>
+      <li><b>The band owns the result outright</b>: design, code, content and the domain. The site runs as a plain static site with a small service behind the editor, so it is cheap to host and nothing ties the band to Gas-Lighting LLC.</li>
+      <li><b>A domain of the band's own</b>, registered to the band, not to Gas-Lighting LLC. The band picks the name; the registration stays in the band's hands.</li>
+      <li><b>Pace.</b> The October 16 show is not a deadline for the site; the Bandzoogle page stays up as long as the band wants it. Dates for the remaining items are set on the floor, not invented in email.</li>
+      <li><b>Longer term.</b> If the band wants an ongoing relationship (the editor and content pipeline, the artist arrangement, marketing), the floor is where that gets agreed. Either answer is fine; it decides what gets built, not what the site costs.</li>
+    </ul>
+    <div class="row"><div class="grow"><b>Gas-Lighting LLC</b><br><span class="hint">Waiting on Sepas Siddiqui to confirm and accept</span></div><span class="tag">lead only</span></div>
+    <div class="row"><div class="grow"><b>Indiscipline</b><br><span class="hint">Waiting on Eric Butler to confirm and accept</span></div><span class="tag">lead only</span></div>
+    <div class="verdict warn">Not open yet. The floor opens when a lead from each side has confirmed their seat and accepted the same version.</div>
+  </div>
+</div>
+
+<div class="card" id="sanity">
+  <h2 class="display">The same way, in Sanity</h2>
+  <p class="sub">The floor is how we agree. The band dashboard is how the site gets kept current, and it runs on the same rules: named people, a hand-off at every step, nothing published without a person's click.</p>
+  <div class="grid2">
+    <div>
+      <p>The <a href="editor-preview.html">band dashboard preview</a> is Sanity, the editor the band would use. Jair Montalvo owns it: the content types and the publish step. Content and art reach it one row at a time from a shared upkeep list, carried by an assistant that stages and stops wherever a person has to decide. It is a hand-off procedure, not an integration: no webhook, no sync, no code.</p>
+      <ol class="flow">
+        <li><div><b>A row is added</b><small>Shows, photos, flyers, videos, posts, artwork. Laurel Guido adds her own pieces, attaches the file, writes the caption and credit, and ticks <b>Made by hand</b>. That tick is her attestation that the piece is human-made with no generative AI anywhere in it. Nobody else ticks it for her.</small></div></li>
+        <li><div><b>The row is checked</b><small>Anything missing is written on the row and the owner is told. Artwork without the tick does not move, whatever anyone says in chat.</small></div></li>
+        <li><div><b>A draft lands in Sanity</b><small>Title, image, credit, caption, placement and date mapped onto the deployed content type. Always a draft, never published. The row records the document id.</small></div></li>
+        <li><div><b>Jair publishes</b><small>His click in Sanity. The row moves to Published and, for artwork, records the date it went live.</small></div></li>
+        <li><div><b>Mail goes out as Gas-Lighting LLC</b><small>When a row needs an announcement, a draft is written from the row's own words, the piece credited by name, and Sepas Siddiqui sends it. The assistant never sends.</small></div></li>
+      </ol>
+    </div>
+    <div>
+      <div class="verdict">Who does what: Laurel attests her art. Jair owns Sanity and publishing. Sepas owns mail in Gas-Lighting LLC's name and settles art with the artist. An assistant carries rows between them and never decides credit, pricing or wording the row does not already contain, never publishes, never sends, never settles.</div>
+      <div class="verdict warn">Where this stands: as of October 11, 2026 no Indiscipline content type is deployed in Sanity yet, so rows stop at <span class="tag warn">Ready for CMS</span> with that reason written down until Jair deploys one. The dashboard preview shows the shape; the content types come next.</div>
+      <div class="verdict ok">Why it is the same way: on the floor, a seat is confirmed by the person who holds it and a version is accepted by a lead from each side. In Sanity, a piece is attested by the artist who made it and published by the person who owns the editor. In both, the record says who did what and when, and nothing moves without that person.</div>
+    </div>
+  </div>
+</div>
+
+<div class="card" id="art">
+  <h2 class="display">The art standard, tested</h2>
+  <p class="sub">"No generative AI in delivered art" is a promise we check, not a line in the terms. From Gas-Lighting LLC's working notes, October 11, 2026.</p>
+  <div class="grid2">
+    <div>
+      <p>Three images went through the same forensic methods: one of Laurel Guido's real pieces (Nebula 35, as a screenshot of her gallery page), an AI copy of it (a small GAN trained on crops of that piece for thirteen minutes), and a pure iterated Mandelbrot render with no network behind it. The detector is never told which is which; every image gets the same model, weights, preprocessing and threshold.</p>
+      <p>The learned detector is NPR (CVPR 2024, the line that runs from CNNDetection, CVPR 2020), checked first on the paper's own examples: a real photo scores 0.00, an AI image 1.00. Beside it, four classical reads: error level analysis (compression history), local noise consistency (capture noise uniformity), the period-2 spectral peak (a camera's demosaic trace or a generator's transposed-convolution grid), and EXIF.</p>
+      <p>The gate this feeds: an art row cannot become due for payment unless the upkeep row has <b>Made by hand</b> ticked by Laurel and a date it was used. That is a house rule on both of Gas-Lighting LLC's floors.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Method</th><th>Reads</th><th class="num">Real piece</th><th class="num">AI copy</th><th class="num">Mandelbrot</th></tr></thead>
+        <tbody>
+          <tr><td>NPR, whole image</td><td>Upsampling residual, learned</td><td class="num">P(AI) 0.00002</td><td class="num">n/a (128 px outputs)</td><td class="num">P(AI) 1.00</td></tr>
+          <tr><td>NPR, 128 px patches</td><td>Same, local</td><td class="num">mean 0.18 · 6 of 32</td><td class="num">mean 1.00 · 32 of 32</td><td class="num">mean 0.50 · 16 of 32</td></tr>
+          <tr><td>NPR after JPEG q85</td><td>Same, after one re-save</td><td class="num"></td><td class="num">mean 0.90 · 29 of 32</td><td class="num"></td></tr>
+          <tr><td>Error level analysis, q90</td><td>Compression history</td><td class="num">36.1</td><td class="num">183.4</td><td class="num">57.9</td></tr>
+          <tr><td>Local noise consistency</td><td>Capture noise uniformity</td><td class="num">0.35</td><td class="num">0.14</td><td class="num">1.77</td></tr>
+          <tr><td>Period-2 peak</td><td>Demosaic trace or generator grid</td><td class="num">0.46 · none</td><td class="num">352 · grid</td><td class="num">0.82 · none</td></tr>
+          <tr><td>EXIF tags</td><td>Metadata</td><td class="num">4 (screenshot tags)</td><td class="num">0</td><td class="num">0</td></tr>
+        </tbody>
+      </table>
+      <p class="hint" style="margin:10px 0 0">Flagged counts are patches at or above the 0.5 line out of 32.</p>
+    </div>
+  </div>
+  <div class="grid2" style="margin-top:18px">
+    <div class="table-wrap">
+      <p class="sub" style="margin-bottom:6px">Same handicap on both sides. The real piece came in as a screenshot (resampled), so the AI copy was resampled the same way and scored again.</p>
+      <table>
+        <thead><tr><th>AI copy resampled</th><th class="num">Mean P(AI)</th><th class="num">Flagged</th></tr></thead>
+        <tbody>
+          <tr class="ai"><td>×0.8 (shrunk)</td><td class="num">0.71</td><td class="num">20 of 32</td></tr>
+          <tr class="ai"><td>×0.9</td><td class="num">0.90</td><td class="num">29 of 32</td></tr>
+          <tr class="ai"><td>×1.25</td><td class="num">0.96</td><td class="num">30 of 32</td></tr>
+          <tr class="ai"><td>×1.5</td><td class="num">0.96</td><td class="num">30 of 32</td></tr>
+          <tr class="ai"><td>×2.0 (Retina-style)</td><td class="num">0.96</td><td class="num">30 of 32</td></tr>
+          <tr class="real"><td>Laurel, Nebula 35, screenshot</td><td class="num">0.00002 whole · 0.18 patches</td><td class="num">0 of 1 whole · 6 of 32 patches</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <p class="sub" style="margin-bottom:6px">What the numbers do and do not say.</p>
+      <ul>
+        <li>With the same handicap on both sides the real piece still reads real and the copy still reads AI. Resampling softens the generator's grid but does not erase it; shrinking hurts it most.</li>
+        <li>One generator against one piece: this shows the ordering holds, not a general error rate. The copy is a crude generator whose grid is visible by eye, so old and new methods catch it easily. A modern diffusion copy is a harder test, and both detector lines were built on GAN images.</li>
+        <li>The Mandelbrot render, which no model made, is called AI by the learned detector. What it measures is "not a camera capture of a physical surface", not "made by a model". That is why the artist's own attestation is the gate and the forensics are a check beside it.</li>
+        <li>The real sample was a resampled screenshot because the original file on the gallery's CDN could not be downloaded from the workspace, so the camera's own sensor trace was already gone from it.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <h2 class="display">What stays out of sight</h2>
+    <p>The labor clock (Gas-Lighting LLC's timer, board, invoice and changelog) runs separately and is a backend for the host team. The band does not need it and nothing in it is reachable from the sign-in page. Once the floor is open, a client seat sees one extra button, <b>Open the project view</b>, which leads to a read-only summary; it is optional and nothing on the floor depends on it.</p>
+  </div>
+  <div class="card">
+    <h2 class="display">Signing out</h2>
+    <p><b>Sign out</b> in the header clears the session on that browser. Signing out from the project view also signs you out of the floor. To get back in, ask for a new code; there is nothing to remember.</p>
+    <div class="actions" style="margin-top:12px"><a class="btn ghost" href="index.html">Back to the concepts</a><a class="btn ghost" href="editor-preview.html">Band dashboard preview</a></div>
+  </div>
+</div>
+
+</main>
+<footer class="presentation-footer">Gas-Lighting LLC for Indiscipline. The floor address answers once deployed; the seats, terms and record shown here are version 1 as proposed and not yet accepted by either side. Forensic figures are from Gas-Lighting LLC's working notes of October 11, 2026, one generator against one piece.</footer>
+</body>
+</html>
