@@ -2,7 +2,8 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
   Gas-Lighting LLC: a scoped, least-privilege IAM role for the Mythos agent. S3 on one bucket, Lambda on functions
   named mythos-*, Secrets Manager on secrets named mythos/*, all in the project Region us-east-2. The role has no
-  long-lived keys: the owner assumes it with the gsl profile and hands the agent a session that expires.
+  long-lived keys. Sessions are minted by the gsl-mint-mythos-session Lambda function in this stack: one GUID per run,
+  carried as the session name and a session tag, so every action the agent takes is tied to that run in CloudTrail.
 
 Parameters:
   RoleName:
@@ -264,7 +265,110 @@ Resources:
         - Key: purpose
           Value: mythos-agent
 
+  # ---- Minting. A Lambda function the owner runs from the console's Test tab (or `aws lambda invoke`). Each run gets a
+  # GUID; the session name and a session tag carry it. Its name is outside the agent's mythos-* prefix on purpose: the
+  # agent must never be able to read, change or invoke the function that mints its own authority.
+  MintRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${RoleName}-mint"
+      Description: Execution role of the session-minting function. May assume the agent role and write its own logs, nothing else.
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: assume-the-agent-role
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: MintAgentSessions
+                Effect: Allow
+                Action:
+                  - sts:AssumeRole
+                  - sts:TagSession
+                Resource: !GetAtt AgentRole.Arn
+      Tags:
+        - Key: owner
+          Value: gsl
+        - Key: purpose
+          Value: mythos-agent
+
+  MintFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: gsl-mint-mythos-session
+      Description: Mints one bounded session for the Mythos agent per run, GUID-tagged. Run from the console's Test tab.
+      Runtime: python3.13
+      Handler: index.handler
+      Role: !GetAtt MintRole.Arn
+      Timeout: 15
+      MemorySize: 128
+      Architectures: [arm64]
+      Environment:
+        Variables:
+          AGENT_ROLE_ARN: !GetAtt AgentRole.Arn
+          PROJECT_REGION: !Ref ProjectRegion
+      Code:
+        ZipFile: |
+          import boto3, json, os, uuid, datetime
+
+          AGENT_ROLE_ARN = os.environ["AGENT_ROLE_ARN"]
+          REGION = os.environ["PROJECT_REGION"]
+          # A role session that assumes another role is role chaining: STS caps the new session at one hour.
+          MAX_SECONDS = 3600
+
+          def handler(event, context):
+              event = event or {}
+              run = str(uuid.uuid4())
+              duration = int(event.get("durationSeconds", MAX_SECONDS))
+              if duration < 900 or duration > MAX_SECONDS:
+                  return {"run": run, "error": "durationSeconds must be between 900 and %d" % MAX_SECONDS}
+              sts = boto3.client("sts", region_name=REGION)
+              resp = sts.assume_role(
+                  RoleArn=AGENT_ROLE_ARN,
+                  RoleSessionName="mythos-" + run,
+                  DurationSeconds=duration,
+                  Tags=[{"Key": "run", "Value": run}],
+              )
+              c = resp["Credentials"]
+              expires = c["Expiration"].astimezone(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+              # The receipt in the log carries no secret: run id, expiry, assumed-role ARN, request id.
+              print(json.dumps({"receipt": "mythos-session", "run": run, "expiresAt": expires,
+                                "assumedRole": resp["AssumedRoleUser"]["Arn"], "requestId": context.aws_request_id}))
+              return {
+                  "run": run,
+                  "expiresAt": expires,
+                  "assumedRole": resp["AssumedRoleUser"]["Arn"],
+                  "env": {
+                      "AWS_ACCESS_KEY_ID": c["AccessKeyId"],
+                      "AWS_SECRET_ACCESS_KEY": c["SecretAccessKey"],
+                      "AWS_SESSION_TOKEN": c["SessionToken"],
+                      "AWS_REGION": REGION,
+                      "AWS_DEFAULT_REGION": REGION,
+                  },
+              }
+      Tags:
+        - Key: owner
+          Value: gsl
+        - Key: purpose
+          Value: mythos-agent
+
+  MintLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/gsl-mint-mythos-session
+      RetentionInDays: 90
+
 Outputs:
+  MintFunctionName:
+    Description: 'Run this from the Lambda console Test tab with the event {"durationSeconds": 3600} to mint a session.'
+    Value: !Ref MintFunction
   RoleArn:
     Description: Assume this with the gsl profile to mint a session for the agent.
     Value: !GetAtt AgentRole.Arn

@@ -62,6 +62,8 @@ Where this guidance conflicts with the project's own instructions, the project's
 
 You CAN update this rule file to save a user's help_level.
 
+help_level: LOW (set by the owner, 2026-10-14)
+
 Constraints for each level:
 
 **LOW:**

@@ -1,11 +1,12 @@
-# Deploy the scoped Mythos agent role for Gas-Lighting LLC, then mint a bounded session for the agent.
+# Deploy the scoped Mythos agent role for Gas-Lighting LLC and its session-minting function, then mint one session.
 # Profile gsl, project Region us-east-2, new AWS experience. IAM is global; the stack is created in the project Region.
 #
 # Run from this folder in Windows PowerShell or PowerShell 7 after `aws login --profile gsl`:
 #   powershell -ExecutionPolicy Bypass -File .\deploy-mythos-agent-role.ps1
 # Options:
 #   -BucketName <name>        use an existing bucket instead of creating gsl-mythos-<account id>
-#   -MaxSessionSeconds 14400  1 h = 3600, 2 h = 7200, 4 h = 14400 (default), 8 h = 28800, 12 h = 43200
+#   -MaxSessionSeconds 14400  the role's ceiling: 1 h = 3600, 2 h = 7200, 4 h = 14400 (default), 8 h = 28800, 12 h = 43200.
+#                             A session minted by the Lambda function is capped at 3600 by STS (role chaining).
 #   -SessionOnly              skip the deploy and only mint a new session for the agent
 #   -NoSession                deploy only; print the role ARN and stop
 #
@@ -102,23 +103,32 @@ if (-not $SessionOnly) {
 if ($NoSession) { Write-Host ""; Write-Host ("Role ready: {0}" -f $RoleArn) -ForegroundColor Green; exit 0 }
 
 # ---------- Step 6 ----------
-Step "6" ("Mint a session for the agent ({0} s)" -f $MaxSessionSeconds) "The cloud session has no AWS identity of its own. It gets these three values as environment secrets and nothing else; they expire."
-$sessRaw = & aws.exe sts assume-role --role-arn $RoleArn --role-session-name mythos-agent --duration-seconds $MaxSessionSeconds --profile $AwsProfile --output json
-if ($LASTEXITCODE -ne 0) {
-    Warn "assume-role was refused."
-    Warn "If the message is AccessDenied, your signed-in identity is not allowed sts:AssumeRole on this role. In the new AWS experience the human permissions are managed by AWS; see the README for what to check."
+$MintSeconds = [Math]::Min($MaxSessionSeconds, 3600)
+Step "6" ("Mint a session for the agent through the gsl-mint-mythos-session function ({0} s)" -f $MintSeconds) "Minting is a Lambda run, not a local call: every run gets a GUID that names the session and tags it, so CloudTrail ties the agent's actions to the run. STS caps a role-minted session at one hour."
+$payloadFile = Join-Path $env:TEMP ("mythos-mint-" + [guid]::NewGuid().ToString() + ".json")
+$outFile = Join-Path $env:TEMP ("mythos-session-" + [guid]::NewGuid().ToString() + ".json")
+('{"durationSeconds": ' + $MintSeconds + '}') | Set-Content -Path $payloadFile -Encoding ascii
+& aws.exe lambda invoke --function-name gsl-mint-mythos-session --cli-binary-format raw-in-base64-out --payload ("file://" + $payloadFile) --region $Region --profile $AwsProfile $outFile | Out-Null
+$invokeExit = $LASTEXITCODE
+Remove-Item $payloadFile -ErrorAction SilentlyContinue
+if ($invokeExit -ne 0) {
+    Remove-Item $outFile -ErrorAction SilentlyContinue
+    Warn "The invoke was refused or the function failed."
+    Warn "If the message is AccessDenied, your signed-in identity may not invoke Lambda; if the function errored, read its log group /aws/lambda/gsl-mint-mythos-session."
     Fail "No session minted."
 }
-$sess = ($sessRaw | ConvertFrom-Json).Credentials
-Ok ("Session expires at {0} (UTC)" -f $sess.Expiration)
+$sess = Get-Content $outFile -Raw | ConvertFrom-Json
+Remove-Item $outFile -ErrorAction SilentlyContinue
+if ($sess.error) { Fail ("The function refused: {0}" -f $sess.error) }
+if ($sess.errorMessage) { Fail ("The function failed: {0}" -f $sess.errorMessage) }
+Ok ("Run {0}" -f $sess.run)
+Ok ("Session expires at {0}" -f $sess.expiresAt)
+Ok ("Assumed role {0}" -f $sess.assumedRole)
 Write-Host ""
 Write-Host "Put these in the Claude Code cloud environment (session title bar > cloud environment > Edit > Network secrets, or environment variables)." -ForegroundColor White
-Write-Host "Set the Region too. Start a new session afterwards; the running one does not pick them up." -ForegroundColor White
+Write-Host "Start a new session afterwards; the running one does not pick them up." -ForegroundColor White
 Write-Host ""
-Write-Host ("AWS_ACCESS_KEY_ID={0}" -f $sess.AccessKeyId)
-Write-Host ("AWS_SECRET_ACCESS_KEY={0}" -f $sess.SecretAccessKey)
-Write-Host ("AWS_SESSION_TOKEN={0}" -f $sess.SessionToken)
-Write-Host ("AWS_REGION={0}" -f $Region)
-Write-Host ("AWS_DEFAULT_REGION={0}" -f $Region)
+foreach ($p in $sess.env.PSObject.Properties) { Write-Host ("{0}={1}" -f $p.Name, $p.Value) }
 Write-Host ""
-Write-Host "When the session expires, run this script again with -SessionOnly and replace the three values." -ForegroundColor DarkGray
+Write-Host "The same mint runs from the Lambda console: function gsl-mint-mythos-session, Test tab, event {""durationSeconds"": 3600}. The response is the block above." -ForegroundColor DarkGray
+Write-Host "When the session expires, run this script again with -SessionOnly, or press Test again, and replace the three values." -ForegroundColor DarkGray
