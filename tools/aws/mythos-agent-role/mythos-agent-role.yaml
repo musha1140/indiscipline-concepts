@@ -1,0 +1,279 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Gas-Lighting LLC: a scoped, least-privilege IAM role for the Mythos agent. S3 on one bucket, Lambda on functions
+  named mythos-*, Secrets Manager on secrets named mythos/*, all in the project Region us-east-2. The role has no
+  long-lived keys: the owner assumes it with the gsl profile and hands the agent a session that expires.
+
+Parameters:
+  RoleName:
+    Type: String
+    Default: gsl-mythos-agent
+    Description: Name of the role the agent assumes.
+  BucketName:
+    Type: String
+    Default: ""
+    Description: The one S3 bucket the agent may use. Empty creates gsl-mythos-<account id>.
+  LambdaPrefix:
+    Type: String
+    Default: mythos-
+    Description: The agent may only touch Lambda functions whose name starts with this.
+  SecretPrefix:
+    Type: String
+    Default: mythos/
+    Description: The agent may only touch Secrets Manager secrets whose name starts with this.
+  MaxSessionSeconds:
+    Type: Number
+    Default: 14400
+    AllowedValues: [3600, 7200, 14400, 28800, 43200]
+    Description: Longest session the owner can mint for the agent, in seconds (1, 2, 4, 8 or 12 hours). Default 4 hours.
+  ProjectRegion:
+    Type: String
+    Default: us-east-2
+    Description: Every Regional action is pinned here. Only S3, IAM PassRole and STS escape the pin, because they are not Regional.
+
+Conditions:
+  CreateBucket: !Equals [!Ref BucketName, ""]
+
+Resources:
+
+  # ---- The agent's bucket. Private, versioned, encrypted. Created only when no bucket name is given.
+  AgentBucket:
+    Type: AWS::S3::Bucket
+    Condition: CreateBucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub "gsl-mythos-${AWS::AccountId}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      Tags:
+        - Key: owner
+          Value: gsl
+        - Key: purpose
+          Value: mythos-agent
+
+  # ---- The execution role Lambda functions created by the agent run as. The agent may pass this role and no other.
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${RoleName}-lambda-exec"
+      Description: Execution role for Lambda functions the Mythos agent creates. Logs, the agent bucket, mythos/* secrets.
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: mythos-function-access
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: ReadMythosSecrets
+                Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:DescribeSecret
+                Resource: !Sub "arn:aws:secretsmanager:${ProjectRegion}:${AWS::AccountId}:secret:${SecretPrefix}*"
+              - Sid: AgentBucketObjects
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: !Sub
+                  - "arn:aws:s3:::${Bucket}/*"
+                  - Bucket: !If [CreateBucket, !Sub "gsl-mythos-${AWS::AccountId}", !Ref BucketName]
+              - Sid: AgentBucketList
+                Effect: Allow
+                Action: s3:ListBucket
+                Resource: !Sub
+                  - "arn:aws:s3:::${Bucket}"
+                  - Bucket: !If [CreateBucket, !Sub "gsl-mythos-${AWS::AccountId}", !Ref BucketName]
+      Tags:
+        - Key: owner
+          Value: gsl
+        - Key: purpose
+          Value: mythos-agent
+
+  # ---- What the agent may do. One customer managed policy, so it can be read, diffed and audited on its own.
+  AgentPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub "${RoleName}-policy"
+      Description: Least-privilege scope for the Mythos agent. S3 on one bucket, Lambda mythos-*, Secrets Manager mythos/*, Region us-east-2.
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+
+          # S3: exactly one bucket.
+          - Sid: S3BucketLevel
+            Effect: Allow
+            Action:
+              - s3:ListBucket
+              - s3:ListBucketVersions
+              - s3:GetBucketLocation
+              - s3:GetBucketVersioning
+            Resource: !Sub
+              - "arn:aws:s3:::${Bucket}"
+              - Bucket: !If [CreateBucket, !Sub "gsl-mythos-${AWS::AccountId}", !Ref BucketName]
+          - Sid: S3Objects
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:GetObjectVersion
+              - s3:PutObject
+              - s3:DeleteObject
+              - s3:AbortMultipartUpload
+              - s3:ListMultipartUploadParts
+            Resource: !Sub
+              - "arn:aws:s3:::${Bucket}/*"
+              - Bucket: !If [CreateBucket, !Sub "gsl-mythos-${AWS::AccountId}", !Ref BucketName]
+
+          # Lambda: functions whose name starts with the prefix, in the project Region only.
+          - Sid: LambdaFunctions
+            Effect: Allow
+            Action:
+              - lambda:CreateFunction
+              - lambda:GetFunction
+              - lambda:GetFunctionConfiguration
+              - lambda:GetPolicy
+              - lambda:UpdateFunctionCode
+              - lambda:UpdateFunctionConfiguration
+              - lambda:PublishVersion
+              - lambda:ListVersionsByFunction
+              - lambda:InvokeFunction
+              - lambda:DeleteFunction
+              - lambda:TagResource
+              - lambda:UntagResource
+              - lambda:ListTags
+              - lambda:AddPermission
+              - lambda:RemovePermission
+              - lambda:CreateFunctionUrlConfig
+              - lambda:GetFunctionUrlConfig
+              - lambda:UpdateFunctionUrlConfig
+              - lambda:DeleteFunctionUrlConfig
+              - lambda:InvokeFunctionUrl
+            Resource: !Sub "arn:aws:lambda:${ProjectRegion}:${AWS::AccountId}:function:${LambdaPrefix}*"
+          - Sid: LambdaListOnly
+            Effect: Allow
+            Action:
+              - lambda:ListFunctions
+              - lambda:GetAccountSettings
+            Resource: "*"
+            Condition:
+              StringEquals:
+                aws:RequestedRegion: !Ref ProjectRegion
+          - Sid: PassOnlyTheLambdaExecutionRole
+            Effect: Allow
+            Action: iam:PassRole
+            Resource: !GetAtt LambdaExecutionRole.Arn
+            Condition:
+              StringEquals:
+                iam:PassedToService: lambda.amazonaws.com
+          - Sid: LambdaLogsReadOnly
+            Effect: Allow
+            Action:
+              - logs:DescribeLogStreams
+              - logs:GetLogEvents
+              - logs:FilterLogEvents
+            Resource: !Sub "arn:aws:logs:${ProjectRegion}:${AWS::AccountId}:log-group:/aws/lambda/${LambdaPrefix}*:*"
+
+          # Secrets Manager: secrets whose name starts with the prefix. Deletion keeps the recovery window.
+          - Sid: SecretsScoped
+            Effect: Allow
+            Action:
+              - secretsmanager:GetSecretValue
+              - secretsmanager:DescribeSecret
+              - secretsmanager:CreateSecret
+              - secretsmanager:PutSecretValue
+              - secretsmanager:UpdateSecret
+              - secretsmanager:ListSecretVersionIds
+              - secretsmanager:TagResource
+              - secretsmanager:UntagResource
+            Resource: !Sub "arn:aws:secretsmanager:${ProjectRegion}:${AWS::AccountId}:secret:${SecretPrefix}*"
+          - Sid: SecretsDeleteWithRecoveryWindowOnly
+            Effect: Allow
+            Action: secretsmanager:DeleteSecret
+            Resource: !Sub "arn:aws:secretsmanager:${ProjectRegion}:${AWS::AccountId}:secret:${SecretPrefix}*"
+            Condition:
+              "Null":
+                secretsmanager:ForceDeleteWithoutRecovery: "true"
+          - Sid: SecretsListOnly
+            Effect: Allow
+            Action: secretsmanager:ListSecrets
+            Resource: "*"
+            Condition:
+              StringEquals:
+                aws:RequestedRegion: !Ref ProjectRegion
+
+          # Identity: lets the agent confirm who it is.
+          - Sid: WhoAmI
+            Effect: Allow
+            Action: sts:GetCallerIdentity
+            Resource: "*"
+
+          # The Region pin. Everything Regional is denied outside the project Region; S3, PassRole and STS are not Regional.
+          - Sid: DenyOutsideProjectRegion
+            Effect: Deny
+            NotAction:
+              - s3:*
+              - iam:PassRole
+              - sts:*
+            Resource: "*"
+            Condition:
+              StringNotEquals:
+                aws:RequestedRegion: !Ref ProjectRegion
+
+  # ---- The role itself. Assumed by the owner's identity in this account; sessions are bounded; no access keys exist.
+  AgentRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref RoleName
+      Description: Scoped role the Mythos agent runs as. Assumed by the owner with the gsl profile; sessions expire.
+      MaxSessionDuration: !Ref MaxSessionSeconds
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: OwnerAssumes
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action:
+              - sts:AssumeRole
+              - sts:TagSession
+            Condition:
+              StringEquals:
+                aws:PrincipalAccount: !Ref AWS::AccountId
+      ManagedPolicyArns:
+        - !Ref AgentPolicy
+      Tags:
+        - Key: owner
+          Value: gsl
+        - Key: purpose
+          Value: mythos-agent
+
+Outputs:
+  RoleArn:
+    Description: Assume this with the gsl profile to mint a session for the agent.
+    Value: !GetAtt AgentRole.Arn
+  PolicyArn:
+    Description: The customer managed policy that holds the whole scope.
+    Value: !Ref AgentPolicy
+  LambdaExecutionRoleArn:
+    Description: The only role the agent may pass to Lambda.
+    Value: !GetAtt LambdaExecutionRole.Arn
+  Bucket:
+    Description: The one bucket the agent may use.
+    Value: !If [CreateBucket, !Sub "gsl-mythos-${AWS::AccountId}", !Ref BucketName]
